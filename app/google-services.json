@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "303281943834",
+    "project_id": "altintakip-d60a1",
+    "storage_bucket": "altintakip-d60a1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:303281943834:android:79558abeaa0f2339f5e8a3",
+        "android_client_info": {
+          "package_name": "com.example.altintakipandroid"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgEj7jD--E9p-iz1VSIllEbmxR9aoJSLM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
