@@ -1,8 +1,10 @@
 package com.example.altintakipandroid.ui.main
 
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -64,18 +66,31 @@ fun MainTabScreen(
     val marketViewModel: MarketViewModel = viewModel()
     val app = LocalContext.current.applicationContext as android.app.Application
     val marketsViewModel: MarketsViewModel = viewModel(
-        factory = MarketsViewModel.Factory(app, config.mobileUseWebSocket == true)
+        factory = MarketsViewModel.Factory(
+            application = app,
+            useWebSocket = config.mobileUseWebSocket == true,
+            timerIntervalSeconds = config.timerInterval,
+            wsPriceJitterEnabled = config.wsPriceJitterEnabled,
+            wsPriceJitterIntervalSec = config.wsPriceJitterIntervalSec,
+            wsDripIntervalMs = config.wsDripIntervalMs
+        )
     )
     val favoritesViewModel: FavoritesViewModel = viewModel()
 
+    // ui-config'te pushEnabled true ise ve daha önce bildirim izni verilmediyse iste (iOS ile uyumlu)
     if (config.pushEnabled == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val context = LocalContext.current
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { }
         LaunchedEffect(Unit) {
             delay(500)
-            runCatching {
-                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                runCatching {
+                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
     }
@@ -89,14 +104,36 @@ fun MainTabScreen(
             ) { tab ->
                 when (tab) {
                     TabType.MARKETS -> MarketsScreen(
+                        config = config,
+                        appInfo = appInfo,
                         viewModel = marketsViewModel,
                         favoritesViewModel = if (config.isFavoriteEnabled) favoritesViewModel else null
                     )
-                    TabType.FAVORITES -> FavoritesScreen(viewModel = favoritesViewModel)
-                    TabType.CONVERTER -> ConverterScreen(viewModel = converterViewModel)
-                    TabType.ASSETS -> AssetsScreen(viewModel = assetsViewModel)
-                    TabType.MARKET -> MarketTabContent(marketViewModel = marketViewModel)
-                    TabType.CONTACT -> ContactScreen(appInfo = appInfo, onLogout = onLogout)
+                    TabType.FAVORITES -> FavoritesScreen(
+                        config = config,
+                        appInfo = appInfo,
+                        viewModel = favoritesViewModel
+                    )
+                    TabType.CONVERTER -> ConverterScreen(
+                        config = config,
+                        appInfo = appInfo,
+                        viewModel = converterViewModel
+                    )
+                    TabType.ASSETS -> AssetsScreen(
+                        config = config,
+                        appInfo = appInfo,
+                        viewModel = assetsViewModel
+                    )
+                    TabType.MARKET -> MarketTabContent(
+                        config = config,
+                        appInfo = appInfo,
+                        marketViewModel = marketViewModel
+                    )
+                    TabType.CONTACT -> ContactScreen(
+                        config = config,
+                        appInfo = appInfo,
+                        onLogout = onLogout
+                    )
                 }
             }
         }

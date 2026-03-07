@@ -27,8 +27,6 @@ import coil.compose.AsyncImage
 import com.example.altintakipandroid.domain.BannerSlide
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.SurfaceCream
-import com.example.altintakipandroid.ui.theme.TextPrimary
 
 @Composable
 fun KampanyalarScreen(
@@ -42,7 +40,7 @@ fun KampanyalarScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .background(SurfaceCream)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -85,7 +83,7 @@ fun KampanyalarScreen(
                             ThemedText(
                                 text = banner.title,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(top = 12.dp)
                             )
                         }

@@ -32,10 +32,6 @@ import coil.compose.AsyncImage
 import com.example.altintakipandroid.domain.BannerSlide
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.Danger
-import com.example.altintakipandroid.ui.theme.SurfaceCream
-import com.example.altintakipandroid.ui.theme.TextPrimary
 
 @Composable
 fun KampanyaDetailScreen(
@@ -67,7 +63,7 @@ fun KampanyaDetailScreen(
                 state.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = AccentOrange)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                             ThemedText(
                                 text = "Yükleniyor...",
                                 modifier = Modifier.padding(top = 16.dp),
@@ -79,9 +75,9 @@ fun KampanyaDetailScreen(
                 state.errorMessage != null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            ThemedText(text = state.errorMessage!!, color = Danger)
+                            ThemedText(text = state.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                                ThemedText(text = "Kapat", color = SurfaceCream)
+                                ThemedText(text = "Kapat", color = MaterialTheme.colorScheme.surface)
                             }
                         }
                     }
@@ -124,7 +120,7 @@ fun KampanyaDetailScreen(
                                 onClick = { uriHandler.openUri(banner.linkUrl!!) },
                                 modifier = Modifier.padding(top = 16.dp)
                             ) {
-                                ThemedText(text = "Linke Git", color = SurfaceCream)
+                                ThemedText(text = "Linke Git", color = MaterialTheme.colorScheme.surface)
                                 Icon(
                                     Icons.AutoMirrored.Outlined.OpenInNew,
                                     contentDescription = null,

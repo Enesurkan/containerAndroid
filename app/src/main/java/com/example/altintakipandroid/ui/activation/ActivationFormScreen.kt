@@ -30,11 +30,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.Danger
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextPrimary
-import com.example.altintakipandroid.ui.theme.TextSecondary
 
 /**
  * Activation form (iOS ActivationFormView): Hoş Geldiniz, QR butonu, VEYA KOD GİRİN, TextField, Aktive Et, Geç.
@@ -75,7 +70,7 @@ fun ActivationFormScreen(
                 onClick = onScanQr,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 contentPadding = ButtonDefaults.ContentPadding
             ) {
                 Icon(
@@ -116,16 +111,16 @@ fun ActivationFormScreen(
                 onValueChange = onClientNameChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceElevated, RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                     .border(
                         1.dp,
-                        AccentOrange.copy(alpha = 0.3f),
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
                         RoundedCornerShape(12.dp)
                     )
                     .padding(16.dp),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                 singleLine = true,
-                cursorBrush = SolidColor(AccentOrange),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
                 decorationBox = { inner ->
                     androidx.compose.foundation.layout.Box {
                         if (clientName.isEmpty()) {
@@ -143,7 +138,7 @@ fun ActivationFormScreen(
             if (errorMessage != null) {
                 ThemedText(
                     text = errorMessage,
-                    color = Danger,
+                    color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -156,7 +151,7 @@ fun ActivationFormScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading && clientName.isNotBlank(),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 contentPadding = ButtonDefaults.ContentPadding
             ) {
                 if (isLoading) {
@@ -180,7 +175,7 @@ fun ActivationFormScreen(
             ) {
                 Text(
                     text = "Geç",
-                    color = TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyLarge
                 )
             }

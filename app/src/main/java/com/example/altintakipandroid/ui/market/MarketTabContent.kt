@@ -8,9 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.altintakipandroid.domain.AppInformationData
+import com.example.altintakipandroid.domain.UIConfig
 
 @Composable
 fun MarketTabContent(
+    config: UIConfig,
+    appInfo: AppInformationData,
     marketViewModel: MarketViewModel
 ) {
     var navStack by remember { mutableStateOf(listOf<MarketRoute>(MarketRoute.Main)) }
@@ -28,6 +32,8 @@ fun MarketTabContent(
     when (val route = current) {
         is MarketRoute.Main -> {
             MarketMainScreen(
+                config = config,
+                appInfo = appInfo,
                 viewModel = marketViewModel,
                 onOpenCampaigns = { push(MarketRoute.Campaigns) },
                 onOpenCampaignDetail = { id -> push(MarketRoute.CampaignDetail(id)) },

@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
@@ -25,20 +26,28 @@ import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.ui.components.CustomHeader
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextPrimary
+import com.example.altintakipandroid.domain.AppInformationData
+import com.example.altintakipandroid.domain.UIConfig
+import com.example.altintakipandroid.ui.main.getNavigationConfig
 
 @Composable
 fun ConverterScreen(
+    config: UIConfig,
+    appInfo: AppInformationData,
     viewModel: ConverterViewModel
 ) {
     val state by viewModel.state.collectAsState()
-    val cornerRadius = 12.dp
+    val cornerRadius = (config.cornerRadiusScale).dp
+    val navConfig = remember(config.navigationStyle) { getNavigationConfig(config.navigationStyle) }
 
     ThemedView {
         Column(modifier = Modifier.fillMaxSize()) {
-            CustomHeader(title = "Çevirici")
+            CustomHeader(
+                title = "Çevirici",
+                navigationStyle = config.navigationStyle,
+                navConfig = navConfig,
+                appInfo = appInfo
+            )
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -49,7 +58,7 @@ fun ConverterScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(cornerRadius))
-                        .background(SurfaceElevated)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { viewModel.showAssetPicker(true) }
                         .padding(16.dp)
                 ) {
@@ -72,7 +81,7 @@ fun ConverterScreen(
                         Icon(
                             imageVector = Icons.Outlined.KeyboardArrowDown,
                             contentDescription = null,
-                            tint = AccentOrange
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -92,11 +101,11 @@ fun ConverterScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(cornerRadius))
-                            .background(SurfaceElevated)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(16.dp),
-                        textStyle = MaterialTheme.typography.titleLarge.copy(color = TextPrimary),
+                        textStyle = MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                         singleLine = true,
-                        cursorBrush = SolidColor(AccentOrange)
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary)
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -104,7 +113,7 @@ fun ConverterScreen(
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Outlined.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = AccentOrange,
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -121,7 +130,7 @@ fun ConverterScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(cornerRadius))
-                            .background(SurfaceElevated)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(16.dp)
                     ) {
                         ThemedText(

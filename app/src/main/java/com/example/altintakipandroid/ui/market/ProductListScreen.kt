@@ -34,9 +34,6 @@ import coil.compose.AsyncImage
 import com.example.altintakipandroid.domain.ProductOut
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextPrimary
 
 @Composable
 fun ProductListScreen(
@@ -68,14 +65,14 @@ fun ProductListScreen(
             when {
                 state.isLoading && state.products.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AccentOrange)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 state.errorMessage != null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         ThemedText(
                             text = state.errorMessage!!,
-                            color = com.example.altintakipandroid.ui.theme.Danger
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -114,7 +111,7 @@ private fun ProductCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceElevated)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(8.dp)
     ) {
@@ -136,7 +133,7 @@ private fun ProductCard(
             ThemedText(
                 text = "%.2f ₺".format(price),
                 style = MaterialTheme.typography.labelMedium,
-                color = AccentOrange,
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }

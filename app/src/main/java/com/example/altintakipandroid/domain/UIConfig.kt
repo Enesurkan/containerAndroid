@@ -16,6 +16,7 @@ data class UIConfig(
     @SerializedName("isFavoriteEnabled") val isFavoriteEnabled: Boolean = true,
     @SerializedName("isAssetEnabled") val isAssetEnabled: Boolean = true,
     @SerializedName("isHasChangeRouter") val isHasChangeRouter: Boolean? = null,
+    @SerializedName("allowHiddenAdmin") val allowHiddenAdmin: Boolean? = true,
     @SerializedName("marketEnabled") val marketEnabled: Boolean? = true,
     @SerializedName("pushEnabled") val pushEnabled: Boolean? = true,
     @SerializedName("marketFontFamily") val marketFontFamily: String? = null,

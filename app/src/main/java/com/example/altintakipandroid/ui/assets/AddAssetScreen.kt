@@ -30,9 +30,6 @@ import com.example.altintakipandroid.domain.UserAsset
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 import com.example.altintakipandroid.ui.converter.AssetPickerSheet
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextPrimary
 
 @Composable
 fun AddAssetScreen(
@@ -73,7 +70,7 @@ fun AddAssetScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceElevated)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { showPicker = true }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -81,12 +78,12 @@ fun AddAssetScreen(
                 ThemedText(text = "Varlık", modifier = Modifier.weight(1f))
                 ThemedText(
                     text = selectedRate?.displayName ?: "Seçiniz",
-                    color = AccentOrange
+                    color = MaterialTheme.colorScheme.secondary
                 )
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = AccentOrange
+                    tint = MaterialTheme.colorScheme.secondary
                 )
             }
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
@@ -103,11 +100,11 @@ fun AddAssetScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceElevated)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(12.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     singleLine = true,
-                    cursorBrush = SolidColor(AccentOrange)
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary)
                 )
             }
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
@@ -124,11 +121,11 @@ fun AddAssetScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceElevated)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(12.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     singleLine = true,
-                    cursorBrush = SolidColor(AccentOrange)
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary)
                 )
             }
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(24.dp))

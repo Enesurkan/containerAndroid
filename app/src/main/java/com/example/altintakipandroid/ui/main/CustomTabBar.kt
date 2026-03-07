@@ -23,10 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.Separator
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextSecondary
+import com.example.altintakipandroid.ui.theme.LocalAppTheme
 
 private val tabIcons: Map<TabType, ImageVector> = mapOf(
     TabType.MARKETS to Icons.Outlined.AttachMoney,
@@ -44,14 +41,16 @@ fun CustomTabBar(
     onTabSelected: (TabType) -> Unit,
     navConfig: NavigationStyleConfig
 ) {
-    val backgroundColor = if (navConfig.tabBarHasBackground) SurfaceElevated else androidx.compose.ui.graphics.Color.Transparent
+    val appTheme = LocalAppTheme.current
+    val backgroundColor = if (navConfig.tabBarHasBackground) appTheme.tabBarBackground else androidx.compose.ui.graphics.Color.Transparent
+    val rowHeight = navConfig.height.dp
 
     androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
-        androidx.compose.material3.HorizontalDivider(color = Separator)
+        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
+                .height(rowHeight)
                 .background(backgroundColor)
                 .padding(bottom = 0.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
@@ -62,7 +61,8 @@ fun CustomTabBar(
                     tab = tab,
                     isSelected = selectedTab == tab,
                     onClick = { onTabSelected(tab) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    navConfig = navConfig
                 )
             }
         }
@@ -74,14 +74,16 @@ private fun RowScope.TabItem(
     tab: TabType,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navConfig: NavigationStyleConfig
 ) {
-    val color = if (isSelected) AccentOrange else TextSecondary
+    val color = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
     val icon = tabIcons[tab] ?: Icons.Outlined.AttachMoney
+    val itemHeight = navConfig.height.dp
 
     androidx.compose.material3.IconButton(
         onClick = onClick,
-        modifier = modifier.height(50.dp)
+        modifier = modifier.height(itemHeight)
     ) {
         androidx.compose.foundation.layout.Column(
             horizontalAlignment = Alignment.CenterHorizontally,

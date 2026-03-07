@@ -35,17 +35,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.altintakipandroid.domain.CategoryTree
+import com.example.altintakipandroid.domain.AppInformationData
+import com.example.altintakipandroid.domain.UIConfig
 import com.example.altintakipandroid.ui.components.CustomHeader
+import com.example.altintakipandroid.ui.main.getNavigationConfig
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.SurfaceCream
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
-import com.example.altintakipandroid.ui.theme.TextPrimary
-import com.example.altintakipandroid.ui.theme.TextSecondary
 
 @Composable
 fun MarketMainScreen(
+    config: UIConfig,
+    appInfo: AppInformationData,
     viewModel: MarketViewModel,
     onOpenCampaigns: () -> Unit,
     onOpenCampaignDetail: (Int) -> Unit,
@@ -53,6 +53,7 @@ fun MarketMainScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
+    val navConfig = remember(config.navigationStyle) { getNavigationConfig(config.navigationStyle) }
 
     LaunchedEffect(Unit) { viewModel.fetchDataIfNeeded() }
     LaunchedEffect(state.categories) {
@@ -63,11 +64,16 @@ fun MarketMainScreen(
 
     ThemedView {
         Column(modifier = Modifier.fillMaxSize()) {
-            CustomHeader(title = "Vitrin")
+            CustomHeader(
+                title = "Vitrin",
+                navigationStyle = config.navigationStyle,
+                navConfig = navConfig,
+                appInfo = appInfo
+            )
             when {
                 state.isLoading && state.categories.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AccentOrange)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 state.errorMessage != null -> {
@@ -88,7 +94,7 @@ fun MarketMainScreen(
                                     .weight(1f)
                                     .height(50.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(TextPrimary)
+                                    .background(MaterialTheme.colorScheme.onSurface)
                                     .clickable(onClick = onOpenCampaigns),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -96,7 +102,7 @@ fun MarketMainScreen(
                                     text = "Kampanyalar",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = SurfaceCream
+                                    color = MaterialTheme.colorScheme.surface
                                 )
                             }
                         }
@@ -117,7 +123,7 @@ fun MarketMainScreen(
                                         .fillMaxWidth()
                                         .height(56.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(SurfaceCream)
+                                        .background(MaterialTheme.colorScheme.surface)
                                         .clickable { selectedCategoryId = category.id }
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center
@@ -126,7 +132,7 @@ fun MarketMainScreen(
                                         text = category.name,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium,
-                                        color = if (isSelected) TextPrimary else TextSecondary
+                                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -146,7 +152,7 @@ fun MarketMainScreen(
                                     ThemedText(
                                         text = "(TÜMÜ) ${selectedCat.name}",
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onOpenProductList(selectedCat.id, null, "(TÜMÜ) ${selectedCat.name}") }
@@ -157,7 +163,7 @@ fun MarketMainScreen(
                                     ThemedText(
                                         text = subcat.name,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = TextSecondary,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onOpenProductList(selectedCat.id, subcat.id, subcat.name) }

@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.domain.OnboardingSlide
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
 import com.example.altintakipandroid.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
@@ -107,7 +106,7 @@ fun OnboardingScreen(
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     contentPadding = ButtonDefaults.ContentPadding
                 ) {
                     Text(
@@ -144,7 +143,7 @@ private fun OnboardingSlideContent(slide: OnboardingSlide) {
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(150.dp),
-                tint = AccentOrange
+                tint = MaterialTheme.colorScheme.secondary
             )
         }
         Spacer(modifier = Modifier.height(32.dp))
@@ -182,7 +181,7 @@ private fun PagerDots(
                     .size(width = width, height = 8.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(
-                        if (index == currentIndex) AccentOrange
+                        if (index == currentIndex) MaterialTheme.colorScheme.secondary
                         else TextSecondary.copy(alpha = 0.3f)
                     )
             )

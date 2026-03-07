@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.altintakipandroid.ui.components.ThemedText
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
 
 @Composable
 fun PortalLoginDialog(
@@ -57,7 +56,7 @@ fun PortalLoginDialog(
                 .fillMaxWidth(0.92f)
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceElevated)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(
                 modifier = Modifier

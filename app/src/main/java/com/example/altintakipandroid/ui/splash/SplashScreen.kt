@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.ui.components.ThemedText
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.SurfaceCream
 
 /**
  * Splash screen (iOS SplashView): surface background, logo/title, progress indicator.
@@ -27,7 +25,7 @@ fun SplashScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(SurfaceCream),
+            .background(MaterialTheme.colorScheme.surface),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.weight(1f))
@@ -39,7 +37,7 @@ fun SplashScreen(
         Spacer(modifier = Modifier.height(24.dp))
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
-            color = AccentOrange,
+            color = MaterialTheme.colorScheme.secondary,
             strokeWidth = 3.dp
         )
         Spacer(modifier = Modifier.weight(1f))

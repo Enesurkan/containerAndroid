@@ -21,35 +21,43 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.domain.UserAsset
+import com.example.altintakipandroid.domain.AppInformationData
+import com.example.altintakipandroid.domain.UIConfig
 import com.example.altintakipandroid.ui.components.CustomHeader
+import com.example.altintakipandroid.ui.main.getNavigationConfig
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.Danger
-import com.example.altintakipandroid.ui.theme.Success
-import com.example.altintakipandroid.ui.theme.SurfaceElevated
+import com.example.altintakipandroid.ui.theme.LocalAppTheme
 
 @Composable
 fun AssetsScreen(
+    config: UIConfig,
+    appInfo: AppInformationData,
     viewModel: AssetsViewModel
 ) {
     val state by viewModel.state.collectAsState()
+    val navConfig = remember(config.navigationStyle) { getNavigationConfig(config.navigationStyle) }
+    val cornerRadius = (config.cornerRadiusScale).dp
 
     ThemedView {
         Column(modifier = Modifier.fillMaxSize()) {
             CustomHeader(
                 title = "Varlıklarım",
+                navigationStyle = config.navigationStyle,
+                navConfig = navConfig,
+                appInfo = appInfo,
                 trailingContent = {
                     IconButton(onClick = { viewModel.showAddAsset(true) }) {
                         Icon(
                             imageVector = Icons.Outlined.Add,
                             contentDescription = "Ekle",
-                            tint = AccentOrange
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -63,8 +71,8 @@ fun AssetsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceElevated)
+                        .clip(RoundedCornerShape(cornerRadius))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(vertical = 32.dp)
                         .padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -78,7 +86,7 @@ fun AssetsScreen(
                         text = "%.2f ₺".format(state.totalValue),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                        color = AccentOrange
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -93,7 +101,7 @@ fun AssetsScreen(
                             text = formatProfit(state.totalProfit),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = if (state.totalProfit >= 0) Success else Danger
+                            color = if (state.totalProfit >= 0) LocalAppTheme.current.success else LocalAppTheme.current.danger
                         )
                     }
                 }
@@ -113,7 +121,7 @@ fun AssetsScreen(
                                 imageVector = Icons.Outlined.Add,
                                 contentDescription = null,
                                 modifier = Modifier.padding(8.dp),
-                                tint = com.example.altintakipandroid.ui.theme.TextSecondary
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             ThemedText(
                                 text = "Henüz varlık eklemediniz",
@@ -165,7 +173,7 @@ private fun AssetRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceElevated.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -190,11 +198,11 @@ private fun AssetRow(
                 text = formatProfit(profit),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = if (profit >= 0) Success else Danger
+                color = if (profit >= 0) LocalAppTheme.current.success else LocalAppTheme.current.danger
             )
         }
         TextButton(onClick = onDelete) {
-            Text("Sil", color = Danger)
+            Text("Sil", color = LocalAppTheme.current.danger)
         }
     }
 }

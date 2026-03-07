@@ -10,11 +10,15 @@ import com.example.altintakipandroid.data.local.PreferencesManager
 import com.example.altintakipandroid.data.websocket.PriceWebSocketClient
 import com.example.altintakipandroid.domain.ExchangeRate
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.random.Random
 
 data class MarketsState(
     val rates: List<ExchangeRate> = emptyList(),
@@ -25,7 +29,11 @@ data class MarketsState(
 
 class MarketsViewModel(
     application: Application,
-    private val useWebSocket: Boolean = false
+    private val useWebSocket: Boolean = false,
+    private val timerIntervalSeconds: Int? = null,
+    private val wsPriceJitterEnabled: Boolean? = null,
+    private val wsPriceJitterIntervalSec: Int? = null,
+    private val wsDripIntervalMs: Int? = null
 ) : AndroidViewModel(application) {
 
     private val prefs = PreferencesManager(application.applicationContext)
@@ -36,14 +44,36 @@ class MarketsViewModel(
     val state: StateFlow<MarketsState> = _state.asStateFlow()
 
     private var wsJob: Job? = null
+    private var refreshJob: Job? = null
+    private var dripJob: Job? = null
+    private var jitterJob: Job? = null
+
+    private val dripMutex = Mutex()
+    private val pendingDripUpdates = mutableListOf<ExchangeRate>()
 
     init {
         viewModelScope.launch { loadRates() }
-        if (useWebSocket) startWebSocket()
+        if (useWebSocket) {
+            startWebSocket()
+            startJitterIfNeeded()
+        }
+        startAutoRefreshIfNeeded()
+    }
+
+    private fun startAutoRefreshIfNeeded() {
+        val interval = timerIntervalSeconds?.takeIf { it > 0 } ?: return
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            while (true) {
+                delay(interval * 1000L)
+                loadRates()
+            }
+        }
     }
 
     private fun startWebSocket() {
         wsJob?.cancel()
+        dripJob?.cancel()
         wsJob = viewModelScope.launch {
             val apiKey = prefs.getApiKey() ?: return@launch
             runCatching {
@@ -54,16 +84,67 @@ class MarketsViewModel(
                     .catch { _state.value = _state.value.copy(wsConnected = false) }
                     .collect { newRates ->
                         if (newRates.isEmpty()) return@collect
-                        val current = _state.value.rates
-                        val merged = mergeRates(current, newRates)
-                        _state.value = _state.value.copy(
-                            rates = merged,
-                            wsConnected = true
-                        )
+                        handleIncomingWsRates(newRates)
                     }
             }
             _state.value = _state.value.copy(wsConnected = false)
         }
+    }
+
+    /**
+     * iOS handleIncomingWSRates: initial snapshot applies all; later batches drip one-by-one if wsDripIntervalMs set.
+     */
+    private suspend fun handleIncomingWsRates(newRates: List<ExchangeRate>) {
+        val current = _state.value.rates
+        val dripMs = wsDripIntervalMs?.takeIf { it > 0 }
+
+        if (current.isEmpty()) {
+            // Initial snapshot: apply all at once (like iOS)
+            val merged = mergeRates(emptyList(), newRates)
+            _state.value = _state.value.copy(rates = merged, wsConnected = true)
+            dripMutex.withLock { pendingDripUpdates.clear() }
+            return
+        }
+
+        if (dripMs != null) {
+            _state.value = _state.value.copy(wsConnected = true)
+            dripMutex.withLock { pendingDripUpdates.clear(); pendingDripUpdates.addAll(newRates) }
+            dripJob?.cancel()
+            dripJob = viewModelScope.launch {
+                while (true) {
+                    delay(dripMs.toLong())
+                    val next = dripMutex.withLock {
+                        if (pendingDripUpdates.isEmpty()) null else pendingDripUpdates.removeAt(0)
+                    } ?: break
+                    applyOneDripRate(next)
+                }
+            }
+        } else {
+            val merged = mergeRates(current, newRates)
+            _state.value = _state.value.copy(rates = merged, wsConnected = true)
+        }
+    }
+
+    /**
+     * Apply a single rate from drip queue: update existing by apiId/currencyCode or append.
+     */
+    private fun applyOneDripRate(rate: ExchangeRate) {
+        val current = _state.value.rates.toMutableList()
+        val code = rate.currencyCode ?: rate.baseCurrencyCode ?: ""
+        val index = current.indexOfFirst { r ->
+            (r.apiId != null && r.apiId != 0 && r.apiId == rate.apiId) ||
+                (r.currencyCode != null && r.currencyCode == rate.currencyCode) ||
+                (code.isNotBlank() && (r.currencyCode == code || r.baseCurrencyCode == code))
+        }
+        val existing = if (index >= 0) current[index] else null
+        val label = existing?.showableText ?: rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: ""
+        val toApply = rate.copy(showableText = label.ifBlank { rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: "" })
+        if (index >= 0) {
+            current[index] = toApply
+        } else {
+            current.add(toApply)
+        }
+        _state.value = _state.value.copy(rates = current, wsConnected = true)
     }
 
     private fun mergeRates(current: List<ExchangeRate>, update: List<ExchangeRate>): List<ExchangeRate> {
@@ -73,6 +154,40 @@ class MarketsViewModel(
         val newIds = update.mapNotNull { it.apiId }.toSet() - current.mapNotNull { it.apiId }.toSet()
         val appended = update.filter { it.apiId in newIds }
         return updatedOrder + appended
+    }
+
+    /**
+     * iOS applyJitterEffect: every jitterIntervalSec, ~25% of rows get ±0.05% fluctuation on buy/sell.
+     */
+    private fun startJitterIfNeeded() {
+        if (wsPriceJitterEnabled != true) return
+        val intervalSec = (wsPriceJitterIntervalSec ?: 10).coerceAtLeast(1)
+        jitterJob?.cancel()
+        jitterJob = viewModelScope.launch {
+            while (true) {
+                delay(intervalSec * 1000L)
+                applyJitterEffect()
+            }
+        }
+    }
+
+    private fun applyJitterEffect() {
+        val rates = _state.value.rates
+        if (rates.isEmpty()) return
+        val updated = rates.mapIndexed { i, rate ->
+            // ~25% chance per row (iOS: Bool.random() && Bool.random())
+            if (Random.nextBoolean() && Random.nextBoolean()) {
+                val sellVal = rate.sell ?: 0.0
+                val jitterAmount = sellVal * 0.0005 // 0.05%
+                val sign = if (Random.nextBoolean()) 1.0 else -1.0
+                val delta = jitterAmount * sign
+                rate.copy(
+                    buy = (rate.buy ?: 0.0) + delta,
+                    sell = sellVal + delta
+                )
+            } else rate
+        }
+        _state.value = _state.value.copy(rates = updated)
     }
 
     fun loadRates() {
@@ -105,16 +220,30 @@ class MarketsViewModel(
     override fun onCleared() {
         super.onCleared()
         wsJob?.cancel()
+        refreshJob?.cancel()
+        dripJob?.cancel()
+        jitterJob?.cancel()
     }
 
     class Factory(
         private val application: Application,
-        private val useWebSocket: Boolean
+        private val useWebSocket: Boolean,
+        private val timerIntervalSeconds: Int? = null,
+        private val wsPriceJitterEnabled: Boolean? = null,
+        private val wsPriceJitterIntervalSec: Int? = null,
+        private val wsDripIntervalMs: Int? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(MarketsViewModel::class.java)) {
-                return MarketsViewModel(application, useWebSocket) as T
+                return MarketsViewModel(
+                    application,
+                    useWebSocket,
+                    timerIntervalSeconds,
+                    wsPriceJitterEnabled,
+                    wsPriceJitterIntervalSec,
+                    wsDripIntervalMs
+                ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

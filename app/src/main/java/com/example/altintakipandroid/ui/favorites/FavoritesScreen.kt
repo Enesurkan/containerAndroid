@@ -18,17 +18,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.ui.components.CustomHeader
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.markets.RateCard
+import com.example.altintakipandroid.domain.AppInformationData
+import com.example.altintakipandroid.domain.UIConfig
+import com.example.altintakipandroid.ui.main.getListConfig
+import com.example.altintakipandroid.ui.main.getNavigationConfig
+import com.example.altintakipandroid.ui.markets.MarketRateRow
 
 @Composable
-fun FavoritesScreen(viewModel: FavoritesViewModel) {
+fun FavoritesScreen(
+    config: UIConfig,
+    appInfo: AppInformationData,
+    viewModel: FavoritesViewModel
+) {
     val state by viewModel.state.collectAsState()
+    val navConfig = remember(config.navigationStyle) { getNavigationConfig(config.navigationStyle) }
+    val listConfig = remember(config.listStyle) { getListConfig(config.listStyle) }
 
     LaunchedEffect(Unit) {
         viewModel.loadFavorites()
@@ -36,7 +47,12 @@ fun FavoritesScreen(viewModel: FavoritesViewModel) {
 
     ThemedView {
         Column(modifier = Modifier.fillMaxSize()) {
-            CustomHeader(title = "Favoriler")
+            CustomHeader(
+                title = "Favoriler",
+                navigationStyle = config.navigationStyle,
+                navConfig = navConfig,
+                appInfo = appInfo
+            )
             when {
                 state.isLoading && state.favoriteRates.isEmpty() -> {
                     Box(
@@ -80,8 +96,13 @@ fun FavoritesScreen(viewModel: FavoritesViewModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(state.favoriteRates) { rate ->
-                            RateCard(
+                            MarketRateRow(
                                 rate = rate,
+                                listConfig = listConfig,
+                                changeRateEnabled = config.changeRateEnabled,
+                                marketFontSize = config.marketFontSize,
+                                marketFontWeight = config.marketFontWeight,
+                                marketFontFamily = config.marketFontFamily,
                                 trailingContent = {
                                     IconButton(onClick = { viewModel.removeFavorite(rate) }) {
                                         Icon(

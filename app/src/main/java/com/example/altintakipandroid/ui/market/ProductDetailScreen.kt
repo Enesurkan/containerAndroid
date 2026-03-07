@@ -33,9 +33,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
-import com.example.altintakipandroid.ui.theme.AccentOrange
-import com.example.altintakipandroid.ui.theme.Danger
-import com.example.altintakipandroid.ui.theme.SurfaceCream
 
 @Composable
 fun ProductDetailScreen(
@@ -67,15 +64,15 @@ fun ProductDetailScreen(
             when {
                 state.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AccentOrange)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 state.errorMessage != null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            ThemedText(text = state.errorMessage!!, color = Danger)
+                            ThemedText(text = state.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                                ThemedText(text = "Kapat", color = SurfaceCream)
+                                ThemedText(text = "Kapat", color = MaterialTheme.colorScheme.surface)
                             }
                         }
                     }
@@ -125,7 +122,7 @@ fun ProductDetailScreen(
                             ThemedText(
                                 text = "%.2f ₺".format(price),
                                 style = MaterialTheme.typography.titleLarge,
-                                color = AccentOrange,
+                                color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(top = 12.dp)
                             )
                         }
@@ -134,7 +131,7 @@ fun ProductDetailScreen(
                                 onClick = { uriHandler.openUri(link) },
                                 modifier = Modifier.padding(top = 16.dp)
                             ) {
-                                ThemedText(text = "Ürün linki", color = SurfaceCream)
+                                ThemedText(text = "Ürün linki", color = MaterialTheme.colorScheme.surface)
                                 Icon(
                                     Icons.AutoMirrored.Outlined.OpenInNew,
                                     contentDescription = null,
@@ -161,7 +158,7 @@ fun ProductDetailScreen(
                             if (state.isShareLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    color = SurfaceCream
+                                    color = MaterialTheme.colorScheme.surface
                                 )
                             } else {
                                 Icon(
@@ -169,7 +166,7 @@ fun ProductDetailScreen(
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
-                                ThemedText(text = "Linki paylaş", color = SurfaceCream)
+                                ThemedText(text = "Linki paylaş", color = MaterialTheme.colorScheme.surface)
                             }
                         }
                     }
