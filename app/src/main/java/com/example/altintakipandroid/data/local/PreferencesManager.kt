@@ -29,6 +29,8 @@ class PreferencesManager(private val context: Context) {
         val USER_FAVORITES = stringPreferencesKey("user_favorites")
         val DEVICE_REGISTERED = booleanPreferencesKey("device_registered")
         val USER_ASSETS = stringPreferencesKey("user_assets")
+        val PORTAL_USERNAME = stringPreferencesKey("portal_username")
+        val PORTAL_PASSWORD = stringPreferencesKey("portal_password")
     }
 
     private val gson = Gson()
@@ -55,6 +57,26 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun clearApiKey() {
         context.dataStore.edit { it.remove(Keys.API_KEY) }
+    }
+
+    suspend fun savePortalCredentials(username: String, pass: String) {
+        context.dataStore.edit { 
+            it[Keys.PORTAL_USERNAME] = username
+            it[Keys.PORTAL_PASSWORD] = pass 
+        }
+    }
+
+    suspend fun getPortalCredentials(): Pair<String, String>? {
+        val user = context.dataStore.data.map { it[Keys.PORTAL_USERNAME] }.first()
+        val pass = context.dataStore.data.map { it[Keys.PORTAL_PASSWORD] }.first()
+        return if (!user.isNullOrBlank() && !pass.isNullOrBlank()) Pair(user, pass) else null
+    }
+
+    suspend fun clearPortalCredentials() {
+        context.dataStore.edit {
+            it.remove(Keys.PORTAL_USERNAME)
+            it.remove(Keys.PORTAL_PASSWORD)
+        }
     }
 
     suspend fun saveUserAssets(assets: List<UserAsset>) {

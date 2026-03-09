@@ -28,6 +28,14 @@ class PortalLoginViewModel(application: Application) : AndroidViewModel(applicat
     private val _state = MutableStateFlow(PortalLoginState())
     val state: StateFlow<PortalLoginState> = _state.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            prefs.getPortalCredentials()?.let { (u, p) ->
+                _state.value = _state.value.copy(username = u, password = p)
+            }
+        }
+    }
+
     fun setUsername(s: String) {
         _state.value = _state.value.copy(username = s, errorMessage = null)
     }
@@ -65,6 +73,7 @@ class PortalLoginViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 val code = body?.statusCode ?: resp.code()
                 if (code in 200..299) {
+                    prefs.savePortalCredentials(username, password)
                     _state.value = _state.value.copy(
                         isLoading = false,
                         successMessage = body?.message ?: "Giriş başarılı",

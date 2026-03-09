@@ -19,6 +19,7 @@ import com.example.altintakipandroid.domain.ExchangeRate
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 import com.example.altintakipandroid.ui.theme.Separator
+import com.example.altintakipandroid.ui.util.formatPriceForDisplay
 
 @Composable
 fun AssetPickerSheet(
@@ -63,7 +64,7 @@ fun AssetPickerSheet(
                         )
                         rate.sell?.let { sell ->
                             ThemedText(
-                                text = "%.2f ₺".format(sell),
+                                text = formatPriceForDisplay(sell),
                                 isSecondary = true,
                                 style = MaterialTheme.typography.bodyMedium
                             )

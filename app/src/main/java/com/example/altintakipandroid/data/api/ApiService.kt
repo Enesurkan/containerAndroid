@@ -14,14 +14,18 @@ import com.example.altintakipandroid.domain.ProductOut
 import com.example.altintakipandroid.domain.PortalLoginRequest
 import com.example.altintakipandroid.domain.PortalLoginResponse
 import com.example.altintakipandroid.domain.ProductDetailResponse
+import com.example.altintakipandroid.domain.GoldMultiplier
+import com.example.altintakipandroid.domain.GoldMultipliersResponse
 import com.example.altintakipandroid.domain.GenerateShareUrlRequest
 import com.example.altintakipandroid.domain.GenerateShareUrlResponse
+import com.example.altintakipandroid.domain.SaveGoldMultiplierItem
 import com.example.altintakipandroid.domain.ProductsResponse
 import com.example.altintakipandroid.domain.PushRegisterRequest
 import com.example.altintakipandroid.domain.PushRegisterResponse
 import com.example.altintakipandroid.domain.UIConfig
 import com.example.altintakipandroid.domain.UIConfigResponse
 import com.example.altintakipandroid.domain.WsTokenResponse
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -133,4 +137,23 @@ interface ApiService {
         @Header("Content-Type") contentType: String = "application/json",
         @Body body: GenerateShareUrlRequest
     ): Response<GenerateShareUrlResponse>
+
+    /**
+     * Fetch gold multipliers (portal). GET /client-apps/gold-multipliers.
+     */
+    @GET(AppConstants.Api.GOLD_MULTIPLIERS)
+    suspend fun fetchGoldMultipliers(
+        @Header("X-Api-Key") apiKey: String,
+        @Header("Content-Type") contentType: String = "application/json"
+    ): Response<GoldMultipliersResponse>
+
+    /**
+     * Save gold multipliers (portal). POST /client-apps/gold-multipliers.
+     */
+    @POST(AppConstants.Api.GOLD_MULTIPLIERS)
+    suspend fun saveGoldMultipliers(
+        @Header("X-Api-Key") apiKey: String,
+        @Header("Content-Type") contentType: String = "application/json",
+        @Body body: List<SaveGoldMultiplierItem>
+    ): Response<ResponseBody>
 }

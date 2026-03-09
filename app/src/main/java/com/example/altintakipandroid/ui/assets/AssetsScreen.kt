@@ -34,6 +34,7 @@ import com.example.altintakipandroid.ui.main.getNavigationConfig
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 import com.example.altintakipandroid.ui.theme.LocalAppTheme
+import com.example.altintakipandroid.ui.util.formatPriceForDisplay
 
 @Composable
 fun AssetsScreen(
@@ -191,7 +192,7 @@ private fun AssetRow(
         }
         Column(horizontalAlignment = Alignment.End) {
             ThemedText(
-                text = "%.2f ₺".format(currentValue),
+                text = formatPriceForDisplay(currentValue),
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
@@ -208,6 +209,6 @@ private fun AssetRow(
 }
 
 private fun formatProfit(profit: Double): String {
-    val sign = if (profit >= 0) "+" else ""
-    return "$sign%.2f ₺".format(profit)
+    val sign = if (profit >= 0) "+" else "-"
+    return "$sign${formatPriceForDisplay(kotlin.math.abs(profit))}"
 }

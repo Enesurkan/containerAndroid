@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.domain.ExchangeRate
+import com.example.altintakipandroid.ui.util.formatPriceForDisplay
 import com.example.altintakipandroid.domain.UserAsset
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
@@ -48,7 +49,7 @@ fun AddAssetScreen(
                 rates = rates,
                 onSelect = {
                     selectedRate = it
-                    if (purchasePrice.isEmpty()) purchasePrice = "%.2f".format(it.sell ?: 0.0)
+                    if (purchasePrice.isEmpty()) purchasePrice = formatPriceForDisplay(it.sell ?: 0.0)
                     showPicker = false
                 },
                 onDismiss = { showPicker = false }

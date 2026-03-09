@@ -1,6 +1,7 @@
 package com.example.altintakipandroid.ui.markets
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -51,16 +52,25 @@ class MarketsViewModel(
     private val dripMutex = Mutex()
     private val pendingDripUpdates = mutableListOf<ExchangeRate>()
 
+    companion object {
+        private const val TAG = "MarketsVM"
+    }
+
     init {
+        Log.d(TAG, "init: useWebSocket=$useWebSocket, wsDripIntervalMs=$wsDripIntervalMs, wsPriceJitterEnabled=$wsPriceJitterEnabled")
         viewModelScope.launch { loadRates() }
         if (useWebSocket) {
             startWebSocket()
             startJitterIfNeeded()
+        } else {
+            Log.d(TAG, "init: skipping WebSocket (mobileUseWebSocket is not true)")
         }
         startAutoRefreshIfNeeded()
     }
 
     private fun startAutoRefreshIfNeeded() {
+        // iOS: when mobileUseWebSocket is true, only WS is used; no periodic REST polling.
+        if (useWebSocket) return
         val interval = timerIntervalSeconds?.takeIf { it > 0 } ?: return
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
@@ -75,11 +85,19 @@ class MarketsViewModel(
         wsJob?.cancel()
         dripJob?.cancel()
         wsJob = viewModelScope.launch {
-            val apiKey = prefs.getApiKey() ?: return@launch
+            val apiKey = prefs.getApiKey()
+            if (apiKey.isNullOrBlank()) {
+                Log.w(TAG, "startWebSocket: no API key, skipping")
+                return@launch
+            }
             runCatching {
                 val tokenResp = api.getWsToken(apiKey)
                 val token = tokenResp.body()?.data?.token
-                if (token.isNullOrBlank()) return@launch
+                if (token.isNullOrBlank()) {
+                    Log.w(TAG, "startWebSocket: no token in response (code=${tokenResp.code()}), skipping")
+                    return@launch
+                }
+                Log.d(TAG, "startWebSocket: connecting with token...")
                 wsClient.connect(token)
                     .catch { _state.value = _state.value.copy(wsConnected = false) }
                     .collect { newRates ->
@@ -97,6 +115,7 @@ class MarketsViewModel(
     private suspend fun handleIncomingWsRates(newRates: List<ExchangeRate>) {
         val current = _state.value.rates
         val dripMs = wsDripIntervalMs?.takeIf { it > 0 }
+        Log.d(TAG, "WS data: ${newRates.size} rates, wsDripIntervalMs=$wsDripIntervalMs, drip=${dripMs != null}")
 
         if (current.isEmpty()) {
             // Initial snapshot: apply all at once (like iOS)
@@ -162,6 +181,7 @@ class MarketsViewModel(
     private fun startJitterIfNeeded() {
         if (wsPriceJitterEnabled != true) return
         val intervalSec = (wsPriceJitterIntervalSec ?: 10).coerceAtLeast(1)
+        Log.d(TAG, "WS jitter: enabled, interval=${intervalSec}s")
         jitterJob?.cancel()
         jitterJob = viewModelScope.launch {
             while (true) {

@@ -14,6 +14,7 @@ import com.example.altintakipandroid.ui.activation.ActivationFormScreen
 import com.example.altintakipandroid.ui.activation.QrScanActivity
 import com.example.altintakipandroid.ui.main.MainTabScreen
 import com.example.altintakipandroid.ui.onboarding.OnboardingScreen
+import com.example.altintakipandroid.ui.splash.ConfigLoadErrorContent
 import com.example.altintakipandroid.ui.splash.SplashScreen
 
 /**
@@ -27,7 +28,7 @@ fun AppGate(
 
     val showSplash = state.isChecking ||
             state.isInitialLoading ||
-            (state.isActivated && !state.isDataReady)
+            (state.isActivated && !state.isDataReady && state.isInitialLoading)
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -36,6 +37,12 @@ fun AppGate(
                     config = state.config,
                     appInfo = state.appInfo,
                     onLogout = { viewModel.deactivate() }
+                )
+            }
+            state.isActivated && !state.isDataReady && !state.isInitialLoading -> {
+                ConfigLoadErrorContent(
+                    message = state.errorMessage ?: "Veri yüklenemedi",
+                    onRetry = { viewModel.retryLoadInitialData() }
                 )
             }
             !state.isChecking && !state.isInitialLoading -> {
@@ -72,9 +79,7 @@ fun AppGate(
         }
 
         if (showSplash) {
-            SplashScreen(
-                appTitle = state.appInfo.navigationTitle ?: "Altın Takip"
-            )
+            SplashScreen(appInfo = state.appInfo)
         }
     }
 }

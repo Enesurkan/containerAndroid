@@ -29,6 +29,7 @@ import com.example.altintakipandroid.ui.components.ThemedView
 import com.example.altintakipandroid.domain.AppInformationData
 import com.example.altintakipandroid.domain.UIConfig
 import com.example.altintakipandroid.ui.main.getNavigationConfig
+import com.example.altintakipandroid.ui.util.formatPriceForDisplay
 
 @Composable
 fun ConverterScreen(
@@ -134,7 +135,7 @@ fun ConverterScreen(
                             .padding(16.dp)
                     ) {
                         ThemedText(
-                            text = "%.2f ₺".format(state.result),
+                            text = formatPriceForDisplay(state.result),
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Black
                         )

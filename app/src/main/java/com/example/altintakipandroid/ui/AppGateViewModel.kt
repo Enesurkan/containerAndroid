@@ -88,6 +88,7 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
                     val configResp = api.fetchUIConfig(apiKey)
                     Log.d(TAG, "AppGateVM loadInitialData: GET /api/v1/ui-config done in ${System.currentTimeMillis() - t0}ms code=${configResp.code()}")
                     val config = configResp.body()?.getConfig() ?: UIConfig.default
+                    Log.d(TAG, "AppGateVM loadInitialData: config mobileUseWebSocket=${config.mobileUseWebSocket}")
 
                     // 2) App Information
                     val t1 = System.currentTimeMillis()
@@ -100,7 +101,8 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
                         config = config,
                         appInfo = appInfo,
                         isInitialLoading = false,
-                        isDataReady = true
+                        isDataReady = true,
+                        errorMessage = null
                     )
                     if (config.pushEnabled == true) {
                         viewModelScope.launch {
@@ -114,18 +116,29 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
                     Log.e(TAG, "AppGateVM loadInitialData: request failed", it)
                     _state.value = _state.value.copy(
                         isInitialLoading = false,
-                        isDataReady = true
+                        isDataReady = false,
+                        errorMessage = it.message ?: "Veri yüklenemedi"
                     )
                 }
             }
-            // Timeout: don't stay on splash forever; continue with default config
+            // Timeout: do not set isDataReady so we never show MainTab with default config (mobileUseWebSocket would be false)
             if (result == null) {
                 Log.w(TAG, "AppGateVM loadInitialData: timeout after 25s (no response from ui-config or app-information)")
                 _state.value = _state.value.copy(
                     isInitialLoading = false,
-                    isDataReady = true
+                    isDataReady = false,
+                    errorMessage = "Bağlantı zaman aşımı. Lütfen tekrar deneyin."
                 )
             }
+        }
+    }
+
+    /** Retry loading config/app-info after failure or timeout. Call when isActivated && !isDataReady && !isInitialLoading. */
+    fun retryLoadInitialData() {
+        viewModelScope.launch {
+            val apiKey = prefs.getApiKey() ?: return@launch
+            _state.value = _state.value.copy(errorMessage = null, isInitialLoading = true)
+            loadInitialData(apiKey)
         }
     }
 
@@ -211,7 +224,6 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
         // QR scanning is handled in AppGate via ActivityResultLauncher; result sets clientName and calls activate().
     }
 
-    /** Log out: unregister push, clear API key, return to activation screen. */
     fun deactivate() {
         viewModelScope.launch {
             runCatching {
@@ -223,8 +235,14 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
                     }
                 }
                 prefs.clearApiKey()
+                prefs.clearPortalCredentials()
             }
-            _state.value = AppGateState()
+            // Reset state but avoid splash loop by marking checking and loading as false.
+            // showOnboarding defaults to false in AppGateState, so it will show ActivationFormScreen.
+            _state.value = AppGateState(
+                isChecking = false,
+                isInitialLoading = false
+            )
         }
     }
 }

@@ -102,7 +102,7 @@ fun getListConfig(listStyle: Int): ListStyleConfig {
             priceColWidth = 125
         )
         5 -> ListStyleConfig(
-            rowHeight = 80,
+            rowHeight = 92,
             hasEmphasizedStyle = false,
             hasCard = true,
             cardRadius = 24,

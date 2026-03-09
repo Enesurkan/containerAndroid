@@ -1,9 +1,12 @@
 package com.example.altintakipandroid.data.websocket
 
+import android.util.Log
 import com.example.altintakipandroid.domain.AppConstants
 import com.example.altintakipandroid.domain.ExchangeRate
 import com.example.altintakipandroid.domain.ExchangeRatesResponse
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +23,10 @@ import java.util.concurrent.TimeUnit
  */
 class PriceWebSocketClient {
 
+    companion object {
+        private const val TAG = "PriceWebSocket"
+    }
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS) // no timeout for WS
@@ -28,7 +35,30 @@ class PriceWebSocketClient {
         .build()
 
     private val gson = Gson()
+    private val gsonPretty = GsonBuilder().setPrettyPrinting().create()
     private val listType = object : TypeToken<List<ExchangeRate>>() {}.type
+
+    private fun prettyLogMessage(text: String) {
+        val pretty = try {
+            val element = JsonParser.parseString(text.trim())
+            gsonPretty.toJson(element)
+        } catch (_: Exception) {
+            text
+        }
+        val maxChunk = 3500
+        if (pretty.length <= maxChunk) {
+            Log.d(TAG, "onMessage (pretty):\n$pretty")
+        } else {
+            var start = 0
+            var part = 1
+            while (start < pretty.length) {
+                val end = minOf(start + maxChunk, pretty.length)
+                Log.d(TAG, "onMessage (pretty) part $part:\n${pretty.substring(start, end)}")
+                start = end
+                part++
+            }
+        }
+    }
 
     /**
      * Connect to WS and emit each parsed list of [ExchangeRate] from incoming messages.
@@ -45,22 +75,31 @@ class PriceWebSocketClient {
 
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                // Initial open - no data yet; first snapshot may come from server
+                Log.d(TAG, "onOpen: connected to $wsUrl")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                prettyLogMessage(text)
                 try {
                     val list = parseRates(text)
+                    Log.d(TAG, "parsed ${list.size} rates")
                     if (list.isNotEmpty()) trySend(list)
-                } catch (_: Exception) { /* ignore parse errors */ }
+                } catch (e: Exception) {
+                    Log.w(TAG, "onMessage: parse error", e)
+                }
             }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {}
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "onClosing: code=$code reason=$reason")
+            }
+
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "onClosed: code=$code reason=$reason")
                 close()
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e(TAG, "onFailure: ${t.message}", t)
                 close(t)
             }
         }

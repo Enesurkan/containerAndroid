@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.example.altintakipandroid.domain.AppInformationData
 import com.example.altintakipandroid.ui.main.NavigationStyleConfig
 
@@ -47,14 +48,14 @@ fun CustomHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(heightDp)
             .then(
                 if (showShadow) Modifier.shadow(4.dp, ambientColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                 else Modifier
             )
             .background(MaterialTheme.colorScheme.surface)
+            .statusBarsPadding()
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth().height(heightDp)) {
             when (navigationStyle) {
                 1, 5 -> HeaderStyle1And5(
                     title = headerTitle,

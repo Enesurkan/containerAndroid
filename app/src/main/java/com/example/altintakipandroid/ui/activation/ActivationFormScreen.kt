@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 
+import androidx.compose.foundation.layout.systemBarsPadding
+
 /**
  * Activation form (iOS ActivationFormView): Hoş Geldiniz, QR butonu, VEYA KOD GİRİN, TextField, Aktive Et, Geç.
  */
@@ -47,9 +49,9 @@ fun ActivationFormScreen(
     ThemedView {
         Column(
             modifier = Modifier
+                .systemBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp)
-                .padding(top = 40.dp)
         ) {
             ThemedText(
                 text = "Hoş Geldiniz",
@@ -171,7 +173,8 @@ fun ActivationFormScreen(
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(
                 onClick = onSkip,
-                enabled = !isLoading
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = "Geç",

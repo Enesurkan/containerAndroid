@@ -75,6 +75,7 @@ fun MarketTabContent(
             )
             ProductDetailScreen(
                 viewModel = detailViewModel,
+                appInfo = appInfo,
                 onBack = { pop() }
             )
         }

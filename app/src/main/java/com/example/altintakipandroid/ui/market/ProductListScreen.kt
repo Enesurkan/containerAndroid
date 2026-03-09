@@ -1,5 +1,6 @@
 package com.example.altintakipandroid.ui.market
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,9 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -35,6 +41,7 @@ import com.example.altintakipandroid.domain.ProductOut
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProductListScreen(
     viewModel: ProductListViewModel,
@@ -49,7 +56,9 @@ fun ProductListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .height(56.dp)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -102,11 +111,15 @@ fun ProductListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ProductCard(
     product: ProductOut,
     onClick: () -> Unit
 ) {
+    val imageList = product.imageList
+    val pagerState = rememberPagerState(pageCount = { imageList.size })
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,15 +128,65 @@ private fun ProductCard(
             .clickable(onClick = onClick)
             .padding(8.dp)
     ) {
-        AsyncImage(
-            model = product.imageUrl,
-            contentDescription = product.title,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
-        )
+                .clip(RoundedCornerShape(8.dp))
+        ) {
+            if (imageList.size > 1) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = true
+                ) { page ->
+                    AsyncImage(
+                        model = imageList[page],
+                        contentDescription = product.title,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val dotCount = minOf(5, imageList.size)
+                    val currentPage = pagerState.currentPage
+                    val activeDotIndex = if (imageList.size <= 5) currentPage
+                        else (currentPage * (dotCount - 1).coerceAtLeast(0) / (imageList.size - 1).coerceAtLeast(1)).coerceIn(0, dotCount - 1)
+                    repeat(dotCount) { index ->
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (index == activeDotIndex)
+                                        MaterialTheme.colorScheme.surface
+                                    else
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                )
+                        )
+                    }
+                }
+            } else {
+                AsyncImage(
+                    model = imageList.firstOrNull() ?: product.imageUrl,
+                    contentDescription = product.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
         ThemedText(
             text = product.title,
             style = MaterialTheme.typography.bodyMedium,

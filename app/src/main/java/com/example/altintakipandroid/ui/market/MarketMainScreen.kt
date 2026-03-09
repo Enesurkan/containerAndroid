@@ -2,6 +2,7 @@ package com.example.altintakipandroid.ui.market
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -124,6 +125,12 @@ fun MarketMainScreen(
                                         .height(56.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(MaterialTheme.colorScheme.surface)
+                                        .border(
+                                            width = if (isSelected) 1.5.dp else 1.dp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onSurface
+                                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
                                         .clickable { selectedCategoryId = category.id }
                                         .padding(8.dp),
                                     contentAlignment = Alignment.Center

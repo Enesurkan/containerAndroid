@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import com.example.altintakipandroid.domain.AppInformationData
@@ -30,10 +31,15 @@ import com.example.altintakipandroid.ui.converter.ConverterScreen
 import com.example.altintakipandroid.ui.converter.ConverterViewModel
 import com.example.altintakipandroid.ui.favorites.FavoritesScreen
 import com.example.altintakipandroid.ui.favorites.FavoritesViewModel
+import com.example.altintakipandroid.data.push.PushDeepLinkHolder
 import com.example.altintakipandroid.ui.market.MarketTabContent
 import com.example.altintakipandroid.ui.market.MarketViewModel
+import com.example.altintakipandroid.ui.market.ProductDetailScreen
+import com.example.altintakipandroid.ui.market.ProductDetailViewModel
+import com.example.altintakipandroid.ui.market.ProductDetailViewModelFactory
 import com.example.altintakipandroid.ui.markets.MarketsScreen
 import com.example.altintakipandroid.ui.markets.MarketsViewModel
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun MainTabScreen(
@@ -42,6 +48,7 @@ fun MainTabScreen(
     onLogout: (() -> Unit)? = null
 ) {
     var selectedTab by remember { mutableStateOf(TabType.MARKETS) }
+    var deepLinkProductId by remember { mutableStateOf<Int?>(null) }
 
     val activeTabs = remember(config) {
         buildList {
@@ -57,6 +64,24 @@ fun MainTabScreen(
     // If selected tab is not in activeTabs (e.g. config changed), switch to first
     if (selectedTab !in activeTabs) {
         selectedTab = activeTabs.first()
+    }
+
+    // Push deep link (iOS ile aynı): bildirime tıklanınca veya cold start'ta payload uygula
+    LaunchedEffect(Unit) {
+        PushDeepLinkHolder.pending.collectLatest { (deeplink, currencyCode) ->
+            val d = deeplink?.trim()
+            val c = currencyCode?.takeIf { it.isNotBlank() }
+            if (d != null || c != null) {
+                applyPushPayload(
+                    deeplink = d,
+                    currencyCode = c,
+                    activeTabs = activeTabs,
+                    onTabSelected = { selectedTab = it },
+                    onOpenProduct = { deepLinkProductId = it }
+                )
+                PushDeepLinkHolder.consume()
+            }
+        }
     }
 
     val navConfig = remember(config.navigationStyle) { getNavigationConfig(config.navigationStyle) }
@@ -143,5 +168,74 @@ fun MainTabScreen(
             onTabSelected = { selectedTab = it },
             navConfig = navConfig
         )
+    }
+
+    // Push ile gelen ürün detayı (iOS fullScreenCover ile aynı)
+    DeepLinkProductOverlay(
+        productId = deepLinkProductId,
+        app = app,
+        appInfo = appInfo,
+        onDismiss = { deepLinkProductId = null }
+    )
+}
+
+@Composable
+private fun DeepLinkProductOverlay(
+    productId: Int?,
+    app: android.app.Application,
+    appInfo: AppInformationData,
+    onDismiss: () -> Unit
+) {
+    if (productId == null) return
+    BackHandler(onBack = onDismiss)
+    Box(modifier = Modifier.fillMaxSize()) {
+        val detailViewModel: ProductDetailViewModel = viewModel(
+            factory = ProductDetailViewModelFactory(app, productId)
+        )
+        ProductDetailScreen(
+            viewModel = detailViewModel,
+            appInfo = appInfo,
+            onBack = onDismiss
+        )
+    }
+}
+
+/** iOS applyPushPayload + handleMarketDeeplink ile aynı mantık. */
+private fun applyPushPayload(
+    deeplink: String?,
+    currencyCode: String?,
+    activeTabs: List<TabType>,
+    onTabSelected: (TabType) -> Unit,
+    onOpenProduct: (Int) -> Unit
+) {
+    val d = deeplink?.trim()
+    if (d != null && d.startsWith("dienu://market/")) {
+        val path = d.removePrefix("dienu://market/")
+        val parts = path.split("/").filter { it.isNotBlank() }
+        when (parts.getOrNull(0) ?: "") {
+            "tab" -> when (parts.getOrNull(1)) {
+                "markets" -> if (TabType.MARKETS in activeTabs) onTabSelected(TabType.MARKETS)
+                "vitrin" -> if (TabType.MARKET in activeTabs) onTabSelected(TabType.MARKET)
+                else -> {}
+            }
+            "campaigns" -> if (TabType.MARKET in activeTabs) onTabSelected(TabType.MARKET)
+            "campaign" -> parts.getOrNull(1)?.toIntOrNull()?.let { _ ->
+                if (TabType.MARKET in activeTabs) onTabSelected(TabType.MARKET)
+            }
+            "category" -> parts.getOrNull(1)?.toIntOrNull()?.let { _ ->
+                if (TabType.MARKET in activeTabs) onTabSelected(TabType.MARKET)
+            }
+            "product" -> parts.getOrNull(1)?.toIntOrNull()?.let { id -> onOpenProduct(id) }
+            else -> {}
+        }
+        return
+    }
+    if (!currencyCode.isNullOrBlank()) {
+        if (TabType.MARKETS in activeTabs) onTabSelected(TabType.MARKETS)
+        return
+    }
+    if (d != null && d.contains("currency/")) {
+        val code = d.split("/").lastOrNull()?.takeIf { it.isNotBlank() }
+        if (code != null && TabType.MARKETS in activeTabs) onTabSelected(TabType.MARKETS)
     }
 }

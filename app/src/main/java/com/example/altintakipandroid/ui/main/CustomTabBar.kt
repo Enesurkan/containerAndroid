@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.navigationBarsPadding
 import com.example.altintakipandroid.ui.theme.LocalAppTheme
 
 private val tabIcons: Map<TabType, ImageVector> = mapOf(
@@ -45,7 +46,12 @@ fun CustomTabBar(
     val backgroundColor = if (navConfig.tabBarHasBackground) appTheme.tabBarBackground else androidx.compose.ui.graphics.Color.Transparent
     val rowHeight = navConfig.height.dp
 
-    androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(backgroundColor)
+            .navigationBarsPadding()
+    ) {
         androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         Row(
             modifier = Modifier
@@ -92,7 +98,7 @@ private fun RowScope.TabItem(
             Icon(
                 imageVector = icon,
                 contentDescription = tab.label,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(24.dp),
                 tint = color
             )
             Text(

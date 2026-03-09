@@ -1,6 +1,7 @@
 package com.example.altintakipandroid.ui.markets
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +11,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -25,11 +31,24 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.repeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +67,63 @@ import com.example.altintakipandroid.ui.main.ListLayoutType
 import com.example.altintakipandroid.ui.main.ListStyleConfig
 import com.example.altintakipandroid.ui.main.getListConfig
 import com.example.altintakipandroid.ui.theme.LocalAppTheme
+import com.example.altintakipandroid.ui.util.formatPriceForDisplay
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.ExperimentalMaterial3Api
 
+/** Section header row (iOS MarketListHeader). Shown when listConfig.showSectionHeader; "Birim" for listStyle 2, "Varlık" otherwise. */
+@Composable
+fun MarketListHeader(
+    listConfig: ListStyleConfig,
+    listStyle: Int,
+    reserveTrailingSpaceForFavorites: Boolean = false
+) {
+    val appTheme = LocalAppTheme.current
+    val labelFirst = if (listStyle == 2) "Birim" else "Varlık"
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .background(appTheme.surfaceElevatedColor)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = listConfig.marginHorizontalDp + listConfig.paddingHorizontalDp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ThemedText(
+                text = labelFirst,
+                isSecondary = true,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.labelMedium
+            )
+            ThemedText(
+                text = "Alış",
+                isSecondary = true,
+                modifier = Modifier.width(listConfig.priceColWidthDp).padding(end = 8.dp),
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.End
+            )
+            ThemedText(
+                text = "Satış",
+                isSecondary = true,
+                modifier = Modifier.width(listConfig.priceColWidthDp),
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.End
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            if (reserveTrailingSpaceForFavorites) {
+                Spacer(modifier = Modifier.width(48.dp))
+            }
+        }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketsScreen(
     config: UIConfig,
@@ -68,16 +143,7 @@ fun MarketsScreen(
                 title = if (state.wsConnected) "Piyasalar • Canlı" else "Piyasalar",
                 navigationStyle = config.navigationStyle,
                 navConfig = navConfig,
-                appInfo = appInfo,
-                trailingContent = {
-                    IconButton(onClick = { viewModel.loadRates() }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Yenile",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                appInfo = appInfo
             )
             when {
                 state.isLoading && state.rates.isEmpty() -> {
@@ -108,16 +174,29 @@ fun MarketsScreen(
                     }
                 }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = listConfig.marginHorizontalDp,
-                            end = listConfig.marginHorizontalDp,
-                            top = listConfig.marginVerticalDp,
-                            bottom = listConfig.marginVerticalDp
-                        ),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(listConfig.marginVerticalDp)
-                    ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (listConfig.showSectionHeader) {
+                            MarketListHeader(
+                                listConfig = listConfig,
+                                listStyle = config.listStyle,
+                                reserveTrailingSpaceForFavorites = config.isFavoriteEnabled
+                            )
+                        }
+                        PullToRefreshBox(
+                            isRefreshing = state.isLoading && state.rates.isNotEmpty(),
+                            onRefresh = { viewModel.loadRates() },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = listConfig.marginHorizontalDp,
+                                    end = listConfig.marginHorizontalDp,
+                                    top = listConfig.marginVerticalDp,
+                                    bottom = listConfig.marginVerticalDp
+                                ),
+                                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(listConfig.marginVerticalDp)
+                            ) {
                         if (state.isLoading) {
                             item {
                                 Box(
@@ -131,7 +210,12 @@ fun MarketsScreen(
                                 }
                             }
                         }
-                        items(state.rates) { rate ->
+                        items(
+                            state.rates,
+                            key = { r -> r.apiId ?: r.currencyCode ?: r.hashCode() }
+                        ) { rate ->
+                            val isFav = rate.apiId != null && rate.apiId in favState.favoriteIds
+                            val showFavoriteAction = favoritesViewModel != null && rate.apiId != null
                             MarketRateRow(
                                 rate = rate,
                                 listConfig = listConfig,
@@ -139,290 +223,30 @@ fun MarketsScreen(
                                 marketFontSize = config.marketFontSize,
                                 marketFontWeight = config.marketFontWeight,
                                 marketFontFamily = config.marketFontFamily,
-                                trailingContent = if (favoritesViewModel != null && rate.apiId != null) {
+                                trailingContent = if (showFavoriteAction) {
                                     {
-                                        val isFav = rate.apiId in favState.favoriteIds
                                         IconButton(
                                             onClick = {
-                                                if (isFav) favoritesViewModel.removeFavoriteById(rate.apiId!!)
-                                                else favoritesViewModel.addFavorite(rate.apiId!!)
+                                                if (isFav) favoritesViewModel?.removeFavoriteById(rate.apiId!!)
+                                                else rate.apiId?.let { favoritesViewModel?.addFavorite(it) }
                                             }
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.Star,
-                                                contentDescription = if (isFav) "Favorilerden çıkar" else "Favorilere ekle",
-                                                tint = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                                imageVector = if (isFav) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                                contentDescription = if (isFav) "Favoriden çıkar" else "Favori ekle",
+                                                modifier = Modifier.size(24.dp),
+                                                tint = if (isFav) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline
                                             )
                                         }
                                     }
-                                } else null
+                                } else null,
+                                isFavorite = isFav
                             )
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Rate row driven by ui-config listStyle (iOS ExchangeRateRow). Respects changeRateEnabled. */
-@Composable
-fun MarketRateRow(
-    rate: ExchangeRate,
-    listConfig: ListStyleConfig,
-    changeRateEnabled: Boolean,
-    trailingContent: @Composable (() -> Unit)? = null,
-    marketFontSize: Double? = null,
-    marketFontWeight: String? = null,
-    marketFontFamily: String? = null
-) {
-    val buy = rate.buy ?: 0.0
-    val sell = rate.sell ?: 0.0
-    val change = rate.changeRate ?: 0.0
-    val isPositive = change >= 0
-    val showChange = changeRateEnabled && change != 0.0
-
-    val rowModifier = Modifier
-        .fillMaxWidth()
-        .height(listConfig.rowHeightDp)
-        .padding(horizontal = listConfig.paddingHorizontalDp, vertical = listConfig.paddingVerticalDp)
-        .then(
-            if (listConfig.hasCard) Modifier
-                .clip(RoundedCornerShape(listConfig.cardRadiusDp))
-                .then(
-                    if (listConfig.borderWidth > 0) Modifier.border(
-                        listConfig.borderWidthDp,
-                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f),
-                        RoundedCornerShape(listConfig.cardRadiusDp)
-                    ) else Modifier
-                )
-            else Modifier
-        )
-
-    val backgroundColor = when {
-        listConfig.layoutType == ListLayoutType.ELEVATED -> Color(0xFF222222)
-        listConfig.hasCard -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surface
-    }
-    val elevation = if (listConfig.hasShadow) 2.dp else 0.dp
-
-    when (listConfig.layoutType) {
-        ListLayoutType.MINIMAL -> {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = rowModifier.background(backgroundColor),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    ThemedText(
-                        text = rate.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        marketFontSize = marketFontSize,
-                        marketFontWeight = marketFontWeight,
-                        marketFontFamily = marketFontFamily
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
-                    ThemedText(text = "%.2f".format(buy), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                    ThemedText(text = "%.2f".format(sell), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                        if (showChange) {
-                            ThemedText(
-                                text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isPositive) LocalAppTheme.current.success else LocalAppTheme.current.danger
-                            )
                         }
                     }
-                    if (trailingContent != null) trailingContent()
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
             }
         }
-        ListLayoutType.CARD, ListLayoutType.BORDERED -> {
-            Card(
-                modifier = rowModifier,
-                shape = RoundedCornerShape(listConfig.cardRadiusDp),
-                colors = CardDefaults.cardColors(containerColor = backgroundColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = elevation)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = listConfig.paddingHorizontalDp, vertical = listConfig.paddingVerticalDp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        ThemedText(
-                            text = rate.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            marketFontSize = marketFontSize,
-                            marketFontWeight = marketFontWeight,
-                            marketFontFamily = marketFontFamily
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        ThemedText(text = "Alış: %.2f".format(buy), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                        ThemedText(text = "Satış: %.2f".format(sell), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                        if (showChange) {
-                            ThemedText(
-                                text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isPositive) LocalAppTheme.current.success else LocalAppTheme.current.danger
-                            )
-                        }
-                    }
-                    if (trailingContent != null) trailingContent()
-                }
-            }
-        }
-        ListLayoutType.ELEVATED -> {
-            Card(
-                modifier = rowModifier,
-                shape = RoundedCornerShape(listConfig.cardRadiusDp),
-                colors = CardDefaults.cardColors(containerColor = backgroundColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = elevation)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(4.dp)
-                            .height(listConfig.rowHeightDp)
-                            .background(MaterialTheme.colorScheme.secondary)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = listConfig.paddingHorizontalDp, vertical = listConfig.paddingVerticalDp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            ThemedText(
-                                text = rate.displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                marketFontSize = marketFontSize,
-                                marketFontWeight = marketFontWeight,
-                                marketFontFamily = marketFontFamily
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            ThemedText(text = "%.2f".format(buy), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                            ThemedText(text = "%.2f".format(sell), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                            if (showChange) {
-                                ThemedText(
-                                    text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (isPositive) LocalAppTheme.current.success else LocalAppTheme.current.danger
-                                )
-                            }
-                        }
-                        if (trailingContent != null) trailingContent()
-                    }
-                }
-            }
-        }
-        ListLayoutType.COMPACT -> {
-            Card(
-                modifier = rowModifier,
-                shape = RoundedCornerShape(listConfig.cardRadiusDp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                elevation = CardDefaults.cardElevation(defaultElevation = elevation)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = listConfig.paddingHorizontalDp, vertical = listConfig.paddingVerticalDp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        ThemedText(
-                            text = rate.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            marketFontSize = marketFontSize,
-                            marketFontWeight = marketFontWeight
-                        )
-                        if (showChange) {
-                            ThemedText(
-                                text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isPositive) LocalAppTheme.current.success else LocalAppTheme.current.danger
-                            )
-                        }
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        ThemedText(text = "ALIŞ", style = MaterialTheme.typography.labelSmall, isSecondary = true)
-                        ThemedText(text = "%.2f".format(buy), style = MaterialTheme.typography.bodyLarge, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                        ThemedText(text = "SATIŞ", style = MaterialTheme.typography.labelSmall, isSecondary = true)
-                        ThemedText(text = "%.2f".format(sell), style = MaterialTheme.typography.bodyLarge, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                    }
-                    if (trailingContent != null) trailingContent()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RateCard(
-    rate: ExchangeRate,
-    trailingContent: @Composable (() -> Unit)? = null
-) {
-    val buy = rate.buy ?: 0.0
-    val sell = rate.sell ?: 0.0
-    val change = rate.changeRate ?: 0.0
-    val isPositive = change >= 0
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                ThemedText(
-                    text = rate.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                )
-                if (rate.description != null && rate.description != rate.showableText) {
-                    ThemedText(
-                        text = rate.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        isSecondary = true
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                ThemedText(
-                    text = "Alış: %.2f".format(buy),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                ThemedText(
-                    text = "Satış: %.2f".format(sell),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                if (change != 0.0) {
-                    ThemedText(
-                        text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isPositive) LocalAppTheme.current.success else LocalAppTheme.current.danger
-                    )
-                }
-            }
-            if (trailingContent != null) {
-                trailingContent()
             }
         }
     }
