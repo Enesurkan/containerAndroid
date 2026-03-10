@@ -138,9 +138,7 @@ fun ProductDetailScreen(
                 state.product != null -> {
                     val product = state.product!!
                     val imageList = product.imageList
-                    var showImageZoom by remember { mutableStateOf(false) }
                     val pagerState = rememberPagerState(pageCount = { imageList.size })
-                    BackHandler(showImageZoom) { showImageZoom = false }
                     Box(Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             Column(
@@ -155,7 +153,14 @@ fun ProductDetailScreen(
                                     .fillMaxWidth()
                                     .height(280.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showImageZoom = true }
+                                    .clickable {
+                                        ProductImageZoomHolder.show(
+                                            imageUrls = imageList,
+                                            initialIndex = pagerState.currentPage,
+                                            contentDescription = product.title,
+                                            onDismiss = { }
+                                        )
+                                    }
                             ) {
                                 if (imageList.size > 1) {
                                     HorizontalPager(
@@ -244,8 +249,7 @@ fun ProductDetailScreen(
                                 )
                             }
                         }
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -282,112 +286,10 @@ fun ProductDetailScreen(
                                 }
                             }
                         }
-                    if (showImageZoom) {
-                        ProductImageZoomOverlay(
-                            imageUrls = imageList,
-                            initialIndex = pagerState.currentPage,
-                            contentDescription = product.title,
-                            onDismiss = { showImageZoom = false }
-                        )
-                    }
+                        }
                     }
                 }
             }
         }
     }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ProductImageZoomOverlay(
-    imageUrls: List<String>,
-    initialIndex: Int,
-    contentDescription: String?,
-    onDismiss: () -> Unit
-) {
-    val pagerState = rememberPagerState(
-        initialPage = initialIndex.coerceIn(0, (imageUrls.size - 1).coerceAtLeast(0)),
-        pageCount = { imageUrls.size }
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))
-    ) {
-        if (imageUrls.size > 1) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = true
-            ) { page ->
-                ZoomableImagePage(
-                    imageUrl = imageUrls[page],
-                    contentDescription = contentDescription
-                )
-            }
-        } else {
-            ZoomableImagePage(
-                imageUrl = imageUrls.firstOrNull() ?: "",
-                contentDescription = contentDescription
-            )
-        }
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(8.dp)
-        ) {
-            Icon(
-                Icons.Outlined.Close,
-                contentDescription = "Kapat"
-            )
-        }
-    }
-}
-
-@Composable
-private fun ZoomableImagePage(
-    imageUrl: String,
-    contentDescription: String?
-) {
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    val maxScale = 5f
-    val doubleTapScale = 2.5f
-
-    AsyncImage(
-        model = imageUrl,
-        contentDescription = contentDescription,
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offset.x,
-                translationY = offset.y
-            )
-            .pointerInput(imageUrl) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        scale = if (scale > 1f) 1f else doubleTapScale
-                        if (scale <= 1f) offset = Offset.Zero
-                    }
-                )
-            }
-            .pointerInput(imageUrl) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, maxScale)
-                    if (scale > 1f) {
-                        offset = Offset(
-                            offset.x + pan.x,
-                            offset.y + pan.y
-                        )
-                    } else {
-                        offset = Offset.Zero
-                    }
-                }
-            }
-    )
 }

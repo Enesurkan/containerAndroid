@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
@@ -117,10 +117,10 @@ fun FavoritesScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(listConfig.marginVerticalDp)
                         ) {
-                            items(
+                            itemsIndexed(
                                 state.favoriteRates,
-                                key = { r -> r.apiId ?: r.currencyCode ?: r.hashCode() }
-                            ) { rate ->
+                                key = { index, r -> "fav_${index}_${r.apiId}_${r.currencyCode}" }
+                            ) { _, rate ->
                                 MarketRateRow(
                                     rate = rate,
                                     listConfig = listConfig,
@@ -136,7 +136,7 @@ fun FavoritesScreen(
                                                 imageVector = Icons.Filled.Star,
                                                 contentDescription = "Favoriden çıkar",
                                                 modifier = Modifier.size(24.dp),
-                                                tint = Color(0xFFEF4444)
+                                                tint = Color(0xFFF97316)
                                             )
                                         }
                                     },

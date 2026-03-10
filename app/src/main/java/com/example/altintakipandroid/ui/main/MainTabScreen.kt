@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,8 @@ import com.example.altintakipandroid.ui.market.MarketViewModel
 import com.example.altintakipandroid.ui.market.ProductDetailScreen
 import com.example.altintakipandroid.ui.market.ProductDetailViewModel
 import com.example.altintakipandroid.ui.market.ProductDetailViewModelFactory
+import com.example.altintakipandroid.ui.market.ProductImageZoomHolder
+import com.example.altintakipandroid.ui.market.ProductImageZoomOverlay
 import com.example.altintakipandroid.ui.markets.MarketsScreen
 import com.example.altintakipandroid.ui.markets.MarketsViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -168,6 +171,19 @@ fun MainTabScreen(
             onTabSelected = { selectedTab = it },
             navConfig = navConfig
         )
+    }
+
+    val zoomRequest by ProductImageZoomHolder.request.collectAsState()
+    if (zoomRequest != null) {
+        BackHandler(onBack = { ProductImageZoomHolder.dismiss() })
+        Box(modifier = Modifier.fillMaxSize()) {
+            ProductImageZoomOverlay(
+                imageUrls = zoomRequest!!.imageUrls,
+                initialIndex = zoomRequest!!.initialIndex,
+                contentDescription = zoomRequest!!.contentDescription,
+                onDismiss = { ProductImageZoomHolder.dismiss() }
+            )
+        }
     }
 
     // Push ile gelen ürün detayı (iOS fullScreenCover ile aynı)

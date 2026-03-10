@@ -628,6 +628,12 @@ private fun ContactLogoCard(
                 )
                 .then(shadowModifier)
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(circleShape)
+                    .background(androidx.compose.ui.graphics.Color.White)
+            )
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(url)

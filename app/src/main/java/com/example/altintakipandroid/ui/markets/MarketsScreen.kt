@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
@@ -167,7 +167,7 @@ fun MarketsScreen(
                                 isSecondary = true
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            TextButton(onClick = { viewModel.loadRates() }) {
+                            TextButton(onClick = { viewModel.loadRates(force = true) }) {
                                 ThemedText(text = "Tekrar dene")
                             }
                         }
@@ -210,10 +210,10 @@ fun MarketsScreen(
                                 }
                             }
                         }
-                        items(
+                        itemsIndexed(
                             state.rates,
-                            key = { r -> r.apiId ?: r.currencyCode ?: r.hashCode() }
-                        ) { rate ->
+                            key = { index, r -> "rate_${index}_${r.apiId}_${r.currencyCode}" }
+                        ) { _, rate ->
                             val isFav = rate.apiId != null && rate.apiId in favState.favoriteIds
                             val showFavoriteAction = favoritesViewModel != null && rate.apiId != null
                             MarketRateRow(
@@ -235,7 +235,7 @@ fun MarketsScreen(
                                                 imageVector = if (isFav) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                                 contentDescription = if (isFav) "Favoriden çıkar" else "Favori ekle",
                                                 modifier = Modifier.size(24.dp),
-                                                tint = if (isFav) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline
+                                                tint = if (isFav) Color(0xFFF97316) else MaterialTheme.colorScheme.outline
                                             )
                                         }
                                     }

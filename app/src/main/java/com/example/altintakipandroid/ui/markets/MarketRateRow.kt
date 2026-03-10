@@ -1,10 +1,8 @@
 package com.example.altintakipandroid.ui.markets
 
-import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.repeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,7 +45,6 @@ import com.example.altintakipandroid.ui.main.ListLayoutType
 import com.example.altintakipandroid.ui.main.ListStyleConfig
 import com.example.altintakipandroid.ui.theme.LocalAppTheme
 import com.example.altintakipandroid.ui.util.formatPriceForDisplay
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 /** Rate row driven by ui-config listStyle (iOS ExchangeRateRow). Respects changeRateEnabled. When isFavorite, applies same list-style visuals as iOS (background tint, leading bar or card stroke). */
@@ -70,40 +67,39 @@ fun MarketRateRow(
     val symbolFirst = listConfig.layoutType == ListLayoutType.MINIMAL
 
     val appTheme = LocalAppTheme.current
-    val pulseAnim = remember { Animatable(Color.Transparent) }
     val successColor = appTheme.success
     val dangerColor = appTheme.danger
     var previousBuy by remember { mutableStateOf(buy) }
     var previousSell by remember { mutableStateOf(sell) }
+    val buyFlashAlpha = remember { Animatable(0f) }
+    val sellFlashAlpha = remember { Animatable(0f) }
+    var buyFlashColor by remember { mutableStateOf<Color?>(null) }
+    var sellFlashColor by remember { mutableStateOf<Color?>(null) }
 
-    LaunchedEffect(buy, sell) {
-        val hasChanged = abs(buy - previousBuy) > 0.0001 || abs(sell - previousSell) > 0.0001
-        if (hasChanged) {
-            val isIncrease = if (buy != previousBuy) buy > previousBuy else sell > previousSell
-            val targetColor = (if (isIncrease) successColor else dangerColor).copy(alpha = 0.15f)
-            if (listConfig.layoutType == ListLayoutType.COMPACT) {
-                pulseAnim.animateTo(
-                    targetValue = targetColor,
-                    animationSpec = repeatable(
-                        iterations = 5,
-                        animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    )
-                )
-                delay(3000L)
-            } else {
-                pulseAnim.animateTo(
-                    targetValue = targetColor,
-                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
-                )
-                delay(800L)
+    LaunchedEffect(buy) {
+        if (abs(buy - previousBuy) > 0.0001) {
+            val isIncrease = buy > previousBuy
+            buyFlashColor = if (isIncrease) successColor else dangerColor
+            buyFlashAlpha.snapTo(0f)
+            repeat(5) {
+                buyFlashAlpha.animateTo(1f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                buyFlashAlpha.animateTo(0f, animationSpec = tween(300, easing = FastOutSlowInEasing))
             }
-            pulseAnim.animateTo(
-                targetValue = Color.Transparent,
-                animationSpec = tween(durationMillis = 600, easing = LinearOutSlowInEasing)
-            )
+            buyFlashColor = null
         }
         previousBuy = buy
+    }
+    LaunchedEffect(sell) {
+        if (abs(sell - previousSell) > 0.0001) {
+            val isIncrease = sell > previousSell
+            sellFlashColor = if (isIncrease) successColor else dangerColor
+            sellFlashAlpha.snapTo(0f)
+            repeat(5) {
+                sellFlashAlpha.animateTo(1f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                sellFlashAlpha.animateTo(0f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+            }
+            sellFlashColor = null
+        }
         previousSell = sell
     }
 
@@ -122,7 +118,15 @@ fun MarketRateRow(
         listConfig.layoutType == ListLayoutType.CARD -> appTheme.accentColor.copy(alpha = 0.15f)
         else -> appTheme.accentColor.copy(alpha = 0.4f)
     }
-    val effectiveBackgroundColor = if (pulseAnim.value != Color.Transparent) pulseAnim.value else backgroundColor
+    val effectiveBackgroundColor = backgroundColor
+
+    val defaultTextColor: Color = MaterialTheme.colorScheme.onSurface
+    val buyPriceColor: Color? = buyFlashColor?.let { flashColor: Color ->
+        androidx.compose.ui.graphics.lerp(defaultTextColor, flashColor, buyFlashAlpha.value)
+    }
+    val sellPriceColor: Color? = sellFlashColor?.let { flashColor: Color ->
+        androidx.compose.ui.graphics.lerp(defaultTextColor, flashColor, sellFlashAlpha.value)
+    }
 
     val rowModifier = Modifier
         .fillMaxWidth()
@@ -186,7 +190,8 @@ fun MarketRateRow(
                         textAlign = TextAlign.End,
                         marketFontSize = marketFontSize,
                         marketFontWeight = marketFontWeight,
-                        marketFontFamily = marketFontFamily
+                        marketFontFamily = marketFontFamily,
+                        color = buyPriceColor
                     )
                     ThemedText(
                         text = formatPriceForDisplay(sell, symbolFirst),
@@ -195,7 +200,8 @@ fun MarketRateRow(
                         textAlign = TextAlign.End,
                         marketFontSize = marketFontSize,
                         marketFontWeight = marketFontWeight,
-                        marketFontFamily = marketFontFamily
+                        marketFontFamily = marketFontFamily,
+                        color = sellPriceColor
                     )
                     if (showChange) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -235,8 +241,8 @@ fun MarketRateRow(
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        ThemedText(text = "Alış: ${formatPriceForDisplay(buy, symbolFirst)}", style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                        ThemedText(text = "Satış: ${formatPriceForDisplay(sell, symbolFirst)}", style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
+                        ThemedText(text = "Alış: ${formatPriceForDisplay(buy, symbolFirst)}", style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily, color = buyPriceColor)
+                        ThemedText(text = "Satış: ${formatPriceForDisplay(sell, symbolFirst)}", style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily, color = sellPriceColor)
                         if (showChange) {
                             ThemedText(
                                 text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
@@ -283,8 +289,8 @@ fun MarketRateRow(
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            ThemedText(text = formatPriceForDisplay(buy, symbolFirst), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
-                            ThemedText(text = formatPriceForDisplay(sell, symbolFirst), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily)
+                            ThemedText(text = formatPriceForDisplay(buy, symbolFirst), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily, color = buyPriceColor)
+                            ThemedText(text = formatPriceForDisplay(sell, symbolFirst), style = MaterialTheme.typography.bodyMedium, marketFontSize = marketFontSize, marketFontWeight = marketFontWeight, marketFontFamily = marketFontFamily, color = sellPriceColor)
                             if (showChange) {
                                 ThemedText(
                                     text = "%s%.2f%%".format(if (isPositive) "+" else "", change),
@@ -393,7 +399,8 @@ fun MarketRateRow(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     marketFontSize = marketFontSize,
                                     marketFontWeight = marketFontWeight,
-                                    marketFontFamily = marketFontFamily
+                                    marketFontFamily = marketFontFamily,
+                                    color = buyPriceColor
                                 )
                             }
                             Row(
@@ -414,7 +421,8 @@ fun MarketRateRow(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     marketFontSize = marketFontSize,
                                     marketFontWeight = marketFontWeight,
-                                    marketFontFamily = marketFontFamily
+                                    marketFontFamily = marketFontFamily,
+                                    color = sellPriceColor
                                 )
                             }
                         }

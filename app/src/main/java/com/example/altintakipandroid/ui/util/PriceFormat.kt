@@ -18,6 +18,13 @@ fun formatPriceForDisplay(price: Double, symbolFirst: Boolean = false): String {
 }
 
 /**
- * Ürün detay fiyatı – iOS ile aynı: 2 ondalık, " TL" (%.2f TL).
+ * Ürün detay ve liste fiyatı: Türkçe format 101.234,00 TL (binlik nokta, ondalık virgül, 2 hane).
  */
-fun formatProductDetailPrice(price: Double): String = "%.2f TL".format(price)
+fun formatProductDetailPrice(price: Double): String {
+    val nf = NumberFormat.getNumberInstance(Locale("tr", "TR")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+        isGroupingUsed = true
+    }
+    return "${nf.format(price)} TL"
+}

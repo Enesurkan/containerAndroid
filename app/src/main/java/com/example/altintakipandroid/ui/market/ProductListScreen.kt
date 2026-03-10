@@ -40,6 +40,7 @@ import coil.compose.AsyncImage
 import com.example.altintakipandroid.domain.ProductOut
 import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
+import com.example.altintakipandroid.ui.util.formatProductDetailPrice
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -194,7 +195,7 @@ private fun ProductCard(
         )
         product.price?.let { price ->
             ThemedText(
-                text = "%.2f ₺".format(price),
+                text = formatProductDetailPrice(price),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.padding(top = 4.dp)

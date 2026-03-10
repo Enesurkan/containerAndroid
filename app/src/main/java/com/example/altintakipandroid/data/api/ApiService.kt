@@ -109,9 +109,9 @@ interface ApiService {
     ): Response<PortalLoginResponse>
 
     /**
-     * WebSocket token for live prices (GET /client-apps/ws-token).
+     * WebSocket token for live prices (POST /client-apps/ws-token).
      */
-    @GET(AppConstants.Api.WS_TOKEN)
+    @POST(AppConstants.Api.WS_TOKEN)
     suspend fun getWsToken(
         @Header("X-Api-Key") apiKey: String,
         @Header("Content-Type") contentType: String = "application/json"

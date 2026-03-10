@@ -33,8 +33,7 @@ fun SplashScreen(
     appInfo: AppInformationData?
 ) {
     val logoUrl = appInfo?.splashLogo?.takeIf { it.isNotBlank() } ?: appInfo?.navigationIcon?.takeIf { it.isNotBlank() }
-    // Default icon has clear/black background; use black splash background so it blends
-    val splashBackground = if (logoUrl != null) MaterialTheme.colorScheme.surface else Color.Black
+    val splashBackground = Color.White
 
     Column(
         modifier = Modifier

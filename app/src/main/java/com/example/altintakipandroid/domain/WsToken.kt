@@ -3,7 +3,7 @@ package com.example.altintakipandroid.domain
 import com.google.gson.annotations.SerializedName
 
 /**
- * Response for WebSocket token endpoint (GET /client-apps/ws-token).
+ * Response for WebSocket token endpoint (POST /client-apps/ws-token).
  */
 data class WsTokenResponse(
     @SerializedName("statusCode") val statusCode: Int? = null,

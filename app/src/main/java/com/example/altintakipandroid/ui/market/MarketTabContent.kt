@@ -51,6 +51,7 @@ fun MarketTabContent(
         }
         is MarketRoute.CampaignDetail -> {
             val detailViewModel: KampanyaDetailViewModel = viewModel(
+                key = "campaign_detail_${route.slideId}",
                 factory = KampanyaDetailViewModelFactory(app, route.slideId)
             )
             KampanyaDetailScreen(

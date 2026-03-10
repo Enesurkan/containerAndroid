@@ -99,13 +99,17 @@ class MarketsViewModel(
                 }
                 Log.d(TAG, "startWebSocket: connecting with token...")
                 wsClient.connect(token)
-                    .catch { _state.value = _state.value.copy(wsConnected = false) }
+                    .catch {
+                        _state.value = _state.value.copy(wsConnected = false)
+                        loadRates(force = true) // fallback to REST (iOS: startRestPolling)
+                    }
                     .collect { newRates ->
                         if (newRates.isEmpty()) return@collect
                         handleIncomingWsRates(newRates)
                     }
             }
             _state.value = _state.value.copy(wsConnected = false)
+            loadRates(force = true) // WS ended, fallback to REST
         }
     }
 
@@ -210,7 +214,14 @@ class MarketsViewModel(
         _state.value = _state.value.copy(rates = updated)
     }
 
-    fun loadRates() {
+    /**
+     * REST /gold-currency. When WebSocket is active and already providing data, skip to avoid redundant request (iOS: fetchRates(force: false) early return).
+     */
+    fun loadRates(force: Boolean = false) {
+        if (!force && useWebSocket && _state.value.wsConnected) {
+            Log.d(TAG, "loadRates: skipped (WebSocket active)")
+            return
+        }
         viewModelScope.launch {
             val apiKey = prefs.getApiKey() ?: run {
                 _state.value = _state.value.copy(errorMessage = "API anahtarı yok", isLoading = false)
