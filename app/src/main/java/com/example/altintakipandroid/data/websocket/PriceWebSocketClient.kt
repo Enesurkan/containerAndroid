@@ -20,12 +20,16 @@ import java.util.concurrent.TimeUnit
 
 /**
  * WebSocket client for live price updates. Connects to wss://host/ws/prices?token=xxx.
+ * iOS WebSocketManager'a uygun: sadece type="gold_currency" mesajlari emit edilir;
+ * "hello", "ping", "snapshot", "delta" mesajlari yoksayilir.
  */
 class PriceWebSocketClient {
 
     companion object {
         private const val TAG = "PriceWebSocket"
     }
+
+    private data class WsMessageHeader(val type: String?)
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -81,9 +85,23 @@ class PriceWebSocketClient {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 prettyLogMessage(text)
                 try {
-                    val list = parseRates(text)
-                    Log.d(TAG, "parsed ${list.size} rates")
-                    if (list.isNotEmpty()) trySend(list)
+                    val header = gson.fromJson(text.trim(), WsMessageHeader::class.java)
+                    when (header?.type) {
+                        "gold_currency" -> {
+                            val list = parseRates(text)
+                            Log.d(TAG, "gold_currency: parsed ${list.size} rates")
+                            if (list.isNotEmpty()) trySend(list)
+                        }
+                        "hello" -> Log.d(TAG, "WS connected: hello received")
+                        "ping" -> { /* no-op */ }
+                        "snapshot", "delta" -> Log.d(TAG, "WS message ignored: type=${header.type}")
+                        null -> {
+                            // type alani yoksa direkt liste formatini dene (geriye uyumluluk)
+                            val list = parseRates(text)
+                            if (list.isNotEmpty()) trySend(list)
+                        }
+                        else -> Log.d(TAG, "WS message unknown type: ${header.type}")
+                    }
                 } catch (e: Exception) {
                     Log.w(TAG, "onMessage: parse error", e)
                 }

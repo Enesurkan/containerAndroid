@@ -84,7 +84,7 @@ fun AssetsScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     ThemedText(
-                        text = "%.2f ₺".format(state.totalValue),
+                        text = formatPriceForDisplay(state.totalValue),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                         color = MaterialTheme.colorScheme.secondary

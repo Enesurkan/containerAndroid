@@ -184,7 +184,7 @@ fun MarketsScreen(
                         }
                         PullToRefreshBox(
                             isRefreshing = state.isLoading && state.rates.isNotEmpty(),
-                            onRefresh = { viewModel.loadRates() },
+                            onRefresh = { viewModel.loadRates(force = true) },
                             modifier = Modifier.fillMaxSize()
                         ) {
                             LazyColumn(

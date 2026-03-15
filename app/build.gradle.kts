@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -12,11 +14,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.altintakipandroid"
+        applicationId = "com.dienu.altintakip"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -30,15 +32,50 @@ android {
                 .firstOrNull() ?: ""
         } else ""
         buildConfigField("String", "DEFAULT_API_KEY", "\"$defaultApiKey\"")
+
+        // Sertifika pinning: api.dienu.work için public key hash. Boş = pinning kapalı. Bkz. docs/CERT_PINNING.md
+        val certPin = if (secretFile.exists()) {
+            secretFile.readLines()
+                .mapNotNull { line ->
+                    val trim = line.trim()
+                    if (trim.startsWith("CERT_PIN_API_DIENU_WORK=")) trim.removePrefix("CERT_PIN_API_DIENU_WORK=").trim() else null
+                }
+                .firstOrNull() ?: ""
+        } else ""
+        buildConfigField("String", "CERT_PIN_API_DIENU_WORK", "\"$certPin\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            val secretFile = rootProject.file("secret.properties")
+            if (!secretFile.exists()) return@create
+            val props = Properties()
+            secretFile.reader(Charsets.UTF_8).use { props.load(it) }
+            val storeFilePath = props["STORE_FILE"]?.toString()?.trim() ?: return@create
+            val storePassword = props["STORE_PASSWORD"]?.toString()?.trim() ?: return@create
+            val keyAlias = props["KEY_ALIAS"]?.toString()?.trim() ?: return@create
+            val keyPassword = props["KEY_PASSWORD"]?.toString()?.trim() ?: return@create
+            val storeFileObj = rootProject.file(storeFilePath)
+            if (!storeFileObj.exists()) return@create
+            storeFile = storeFileObj
+            this.storePassword = storePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null && releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
     }
     compileOptions {
@@ -52,6 +89,25 @@ android {
         compose = true
         viewBinding = true
         buildConfig = true
+    }
+}
+
+// Her release AAB'yi sürüm/build numarasına göre kopyala; eskisi kaybolmasın.
+afterEvaluate {
+    tasks.named("bundleRelease").configure {
+        doLast {
+            val versionName = android.defaultConfig.versionName ?: "unknown"
+            val versionCode = android.defaultConfig.versionCode
+            val buildDir = layout.buildDirectory.get().asFile
+            val aabFile = buildDir.resolve("outputs/bundle/release/app-release.aab")
+            if (aabFile.exists()) {
+                val destDir = buildDir.resolve("release-bundles").resolve("$versionName-$versionCode")
+                destDir.mkdirs()
+                val destFile = destDir.resolve("app-release-$versionName-$versionCode.aab")
+                aabFile.copyTo(destFile, overwrite = true)
+                println("AAB kopyalandı: $destFile")
+            }
+        }
     }
 }
 

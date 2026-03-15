@@ -11,6 +11,7 @@ data class WsTokenResponse(
     @SerializedName("data") val data: WsTokenData? = null
 ) {
     data class WsTokenData(
-        @SerializedName("token") val token: String? = null
+        @SerializedName("token") val token: String? = null,
+        @SerializedName("expiresIn") val expiresIn: Int? = null
     )
 }

@@ -1,0 +1,28 @@
+---
+description: Görev türüne göre Cursor model önerisi - bug fix, mimari, refactor vb.
+alwaysApply: true
+---
+
+# Görev Türüne Göre Model Önerisi
+
+Kullanıcı bir görev verdiğinde, önce görev türünü tespit et ve yanıtının **en başında** (ilk 1–2 cümlede) hangi modelin bu iş için uygun olduğunu kısaca belirt. Kullanıcı Composer/Chat model seçiciden modeli kendisi değiştirebilir; sen sadece öneriyi söyle.
+
+## Görev türü → Önerilen model
+
+| Görev türü | Önerilen model | Gerekçe |
+|------------|----------------|--------|
+| **Bug fix** (hata düzeltme, crash, küçük düzeltme) | Composer 1.5 veya Auto | Hızlı, dahil kredi havuzu; dar kapsamlı iş için yeterli. |
+| **Mimari / architecture** (yapı kararı, katman tasarımı, büyük refactor) | Claude 4.5/4.6 Opus veya Premium | Karmaşık mantık ve tutarlı mimari için daha güçlü. |
+| **Refactor** (orta ölçekli kod temizliği, pattern uygulama) | Composer 1.5 veya Claude 4.5 Sonnet | Dengeli; Sonnet daha zor refactor’larda. |
+| **Yeni özellik** (ekran, API entegrasyonu, orta karmaşıklık) | Composer 1.5 veya Claude 4.5 Sonnet | Agentic coding ve kod üretimi için uygun. |
+| **Dokümantasyon / açıklama / README** | Claude 4.5 Sonnet | Metin ve yapı için güçlü. |
+| **Hızlı soru / arama / küçük değişiklik** | Auto veya Gemini 3 Flash | Ucuz ve hızlı. |
+
+## Nasıl uygula
+
+- Görev türünü kullanıcı ifadesinden çıkar (örn. “şu bug’ı düzelt” → bug fix, “mimariyi şöyle değiştirelim” → mimari).
+- Yanıtına şu kalıba uygun kısa bir öneri ile başla:  
+  **"Bu görev için önerilen model: [Model adı]. [İsterseniz Composer/Chat model seçiciden değiştirebilirsiniz.]"**
+- Ardından asıl görevi (bug fix, mimari öneri, refactor vb.) yapmaya devam et.
+
+Bu kural, kullanıcının doğru modeli seçmesine yardımcı olmak içindir; model seçimini Cursor arayüzü kullanıcı yapar.

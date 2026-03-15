@@ -52,6 +52,12 @@ class MarketsViewModel(
     private val dripMutex = Mutex()
     private val pendingDripUpdates = mutableListOf<ExchangeRate>()
 
+    /**
+     * iOS labelDictionary: REST /gold-currency'den gelen showableText etiketlerini tutar.
+     * WS rate'lerinde etiket hicbir zaman WS'ten alinmaz; once buradan, sonra mevcut satirdan cozumlenir.
+     */
+    private val labelDictionary = mutableMapOf<String, String>()
+
     companion object {
         private const val TAG = "MarketsVM"
     }
@@ -92,24 +98,50 @@ class MarketsViewModel(
             }
             runCatching {
                 val tokenResp = api.getWsToken(apiKey)
-                val token = tokenResp.body()?.data?.token
+                val tokenData = tokenResp.body()?.data
+                val token = tokenData?.token
                 if (token.isNullOrBlank()) {
                     Log.w(TAG, "startWebSocket: no token in response (code=${tokenResp.code()}), skipping")
                     return@launch
                 }
+
+                // iOS: token suresi dolmadan once (%80) yeniden baglan
+                val expiresIn = tokenData.expiresIn ?: 3600
+                val refreshDelayMs = (expiresIn * 0.8 * 1000).toLong()
+                Log.d(TAG, "startWebSocket: token expiresIn=${expiresIn}s, refresh in ${refreshDelayMs}ms")
+                scheduleTokenRefresh(refreshDelayMs)
+
                 Log.d(TAG, "startWebSocket: connecting with token...")
                 wsClient.connect(token)
                     .catch {
+                        // iOS: WS kopunca jitter'i durdur, REST fallback'e gec
+                        jitterJob?.cancel()
                         _state.value = _state.value.copy(wsConnected = false)
-                        loadRates(force = true) // fallback to REST (iOS: startRestPolling)
+                        loadRates(force = true)
                     }
                     .collect { newRates ->
                         if (newRates.isEmpty()) return@collect
                         handleIncomingWsRates(newRates)
                     }
             }
+            // WS normal kapandiysa jitter'i durdur, REST fallback'e gec
+            jitterJob?.cancel()
             _state.value = _state.value.copy(wsConnected = false)
-            loadRates(force = true) // WS ended, fallback to REST
+            loadRates(force = true)
+        }
+    }
+
+    private var tokenRefreshJob: Job? = null
+
+    /**
+     * iOS: token suresinin %80'inde WS'i yeniden baslat.
+     */
+    private fun scheduleTokenRefresh(delayMs: Long) {
+        tokenRefreshJob?.cancel()
+        tokenRefreshJob = viewModelScope.launch {
+            delay(delayMs)
+            Log.d(TAG, "Token refresh: reconnecting WebSocket...")
+            startWebSocket()
         }
     }
 
@@ -137,7 +169,8 @@ class MarketsViewModel(
                 while (true) {
                     delay(dripMs.toLong())
                     val next = dripMutex.withLock {
-                        if (pendingDripUpdates.isEmpty()) null else pendingDripUpdates.removeAt(0)
+                        if (pendingDripUpdates.isEmpty()) null
+                        else pendingDripUpdates.removeAt(Random.nextInt(pendingDripUpdates.size))
                     } ?: break
                     applyOneDripRate(next)
                 }
@@ -149,7 +182,9 @@ class MarketsViewModel(
     }
 
     /**
-     * Apply a single rate from drip queue: update existing by apiId/currencyCode or append.
+     * iOS dripTimer blogu ile ayni: mevcut satirdaki alanlari WS guncellmesiyle birlestir.
+     * Eksik WS alanlari icin mevcut rate degerini koru (buy ?? existing.buy vb.).
+     * showableText asla WS'ten alinmaz; once labelDictionary, sonra mevcut satir.
      */
     private fun applyOneDripRate(rate: ExchangeRate) {
         val current = _state.value.rates.toMutableList()
@@ -159,13 +194,35 @@ class MarketsViewModel(
                 (r.currencyCode != null && r.currencyCode == rate.currencyCode) ||
                 (code.isNotBlank() && (r.currencyCode == code || r.baseCurrencyCode == code))
         }
-        val existing = if (index >= 0) current[index] else null
-        val label = existing?.showableText ?: rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: ""
-        val toApply = rate.copy(showableText = label.ifBlank { rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: "" })
+
         if (index >= 0) {
-            current[index] = toApply
+            val existing = current[index]
+            val resolvedCode = rate.currencyCode ?: rate.baseCurrencyCode
+                ?: existing.currencyCode ?: existing.baseCurrencyCode ?: ""
+            val labelFromDict = labelDictionary[resolvedCode]
+            val resolvedLabel = labelFromDict ?: existing.showableText
+                ?: existing.baseCurrencyCode ?: existing.currencyCode ?: ""
+
+            val merged = existing.copy(
+                apiId = if (rate.apiId != null && rate.apiId != 0) rate.apiId else existing.apiId,
+                baseCurrencyCode = rate.baseCurrencyCode ?: existing.baseCurrencyCode,
+                targetCurrencyCode = rate.targetCurrencyCode ?: existing.targetCurrencyCode,
+                currencyCode = rate.currencyCode ?: existing.currencyCode,
+                buy = rate.buy ?: existing.buy,
+                sell = rate.sell ?: existing.sell,
+                changeRate = rate.changeRate ?: existing.changeRate,
+                dayHigh = rate.dayHigh ?: existing.dayHigh,
+                dayLow = rate.dayLow ?: existing.dayLow,
+                prevClose = rate.prevClose ?: existing.prevClose,
+                fetchedAt = rate.fetchedAt ?: existing.fetchedAt,
+                showableText = resolvedLabel
+            )
+            current[index] = merged
         } else {
-            current.add(toApply)
+            // REST'te olmayan yeni bir kod; labelDictionary'den veya kendi alanlari
+            val resolvedLabel = labelDictionary[code]
+                ?: rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: ""
+            current.add(rate.copy(showableText = resolvedLabel))
         }
         _state.value = _state.value.copy(rates = current, wsConnected = true)
     }
@@ -238,6 +295,14 @@ class MarketsViewModel(
                     return@launch
                 }
                 val list = resp.body()?.data ?: emptyList()
+                // iOS labelDictionary: REST cevabindan etiketleri al, WS driplerinde kullanilacak
+                list.forEach { rate ->
+                    val code = rate.currencyCode ?: rate.baseCurrencyCode ?: return@forEach
+                    if (code.isNotBlank()) {
+                        val label = rate.showableText ?: rate.baseCurrencyCode ?: rate.currencyCode ?: ""
+                        if (label.isNotBlank()) labelDictionary[code] = label
+                    }
+                }
                 _state.value = _state.value.copy(rates = list, isLoading = false, errorMessage = null)
             }.onFailure {
                 _state.value = _state.value.copy(
@@ -254,6 +319,7 @@ class MarketsViewModel(
         refreshJob?.cancel()
         dripJob?.cancel()
         jitterJob?.cancel()
+        tokenRefreshJob?.cancel()
     }
 
     class Factory(

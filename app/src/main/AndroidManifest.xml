@@ -29,6 +29,13 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep link: dienu://market/... (push ile aynı format; harici linkler uygulamayı açar) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dienu" android:host="market" android:pathPrefix="/" />
+            </intent-filter>
         </activity>
         <activity
             android:name=".ui.activation.QrScanActivity"

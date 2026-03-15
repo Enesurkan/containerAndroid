@@ -32,6 +32,20 @@ import com.example.altintakipandroid.ui.components.ThemedText
 import com.example.altintakipandroid.ui.components.ThemedView
 import com.example.altintakipandroid.ui.converter.AssetPickerSheet
 
+/** Türkçe/uluslararası sayı formatını parse eder: "1,5" "1.234,56" "1 200" vb. */
+private fun parseDecimal(input: String): Double? {
+    val s = input.replace(" ", "").trim()
+    if (s.isEmpty()) return null
+    // Tek virgül veya nokta: ondalık ayracı (1,5 veya 1.5)
+    val comma = s.lastIndexOf(',')
+    val dot = s.lastIndexOf('.')
+    return when {
+        comma > dot -> s.replace(".", "").replace(",", ".").toDoubleOrNull() // 1.234,56
+        dot > comma -> s.replace(",", "").toDoubleOrNull() // 1,234.56
+        else -> s.replace(",", ".").toDoubleOrNull() // 1,5 veya 1.5
+    }
+}
+
 @Composable
 fun AddAssetScreen(
     rates: List<ExchangeRate>,
@@ -141,8 +155,9 @@ fun AddAssetScreen(
                 Button(
                     onClick = {
                         val r = selectedRate ?: return@Button
-                        val a = amount.replace(",", ".").toDoubleOrNull() ?: return@Button
-                        val p = purchasePrice.replace(",", ".").toDoubleOrNull() ?: return@Button
+                        val a = parseDecimal(amount) ?: return@Button
+                        if (a <= 0) return@Button
+                        val p = parseDecimal(purchasePrice) ?: (r.sell ?: 0.0)
                         onSave(
                             UserAsset(
                                 exchangeRateId = r.apiId ?: 0,
@@ -152,7 +167,7 @@ fun AddAssetScreen(
                             )
                         )
                     },
-                    enabled = selectedRate != null && amount.isNotBlank() && purchasePrice.isNotBlank()
+                    enabled = selectedRate != null && amount.isNotBlank()
                 ) {
                     Text("Kaydet")
                 }

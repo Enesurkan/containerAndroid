@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:303281943834:android:79558abeaa0f2339f5e8a3",
+        "mobilesdk_app_id": "1:303281943834:android:c3a1fb4bb2377358f5e8a3",
         "android_client_info": {
-          "package_name": "com.example.altintakipandroid"
+          "package_name": "com.dienu.altintakip"
         }
       },
       "oauth_client": [],

@@ -1,9 +1,11 @@
 package com.example.altintakipandroid.data.api
 
 import android.util.Log
+import com.example.altintakipandroid.BuildConfig
 import com.example.altintakipandroid.domain.AppConstants
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -47,28 +49,59 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
+    /** Release'de API istek/cevap ve header loglanmaz (reverse eng. riski azaltır). */
+    private val okHttpClientBuilder = OkHttpClient.Builder()
         .addInterceptor { chain ->
             val request = chain.request()
-            Log.d(LOG_TAG, "--> REQUEST ${request.method} ${request.url}")
-            request.headers.forEach { (name, value) ->
-                Log.d(LOG_TAG, "    $name: $value")
+            if (BuildConfig.DEBUG) {
+                Log.d(LOG_TAG, "--> REQUEST ${request.method} ${request.url}")
+                request.headers.forEach { (name, value) ->
+                    Log.d(LOG_TAG, "    $name: $value")
+                }
             }
             val built = request.newBuilder()
                 .addHeader("Content-Type", "application/json")
                 .build()
             val response = chain.proceed(built)
-            Log.d(LOG_TAG, "<-- RESPONSE ${response.code} ${response.message} ${response.request.url}")
-            response.headers.forEach { (name, value) ->
-                Log.d(LOG_TAG, "    $name: $value")
+            if (BuildConfig.DEBUG) {
+                Log.d(LOG_TAG, "<-- RESPONSE ${response.code} ${response.message} ${response.request.url}")
+                response.headers.forEach { (name, value) ->
+                    Log.d(LOG_TAG, "    $name: $value")
+                }
             }
             response
         }
-        .addInterceptor(loggingInterceptor)
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
-        .build()
+
+    init {
+        if (BuildConfig.DEBUG) {
+            okHttpClientBuilder.addInterceptor(loggingInterceptor)
+        }
+        // Certificate pinning: Release'de API host için pin eklenebilir (SHA-256).
+        // Pin almak: openssl s_client -servername api.dienu.work -connect api.dienu.work:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+        val certificatePinner = buildCertificatePinner()
+        if (certificatePinner != null) {
+            okHttpClientBuilder.certificatePinner(certificatePinner)
+        }
+    }
+
+    /**
+     * Sertifika pinning. Pin değerini almak için:
+     * echo | openssl s_client -servername api.dienu.work -connect api.dienu.work:443 2>/dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64
+     * Detay: docs/CERT_PINNING.md
+     */
+    private fun buildCertificatePinner(): CertificatePinner? {
+        val pin = BuildConfig.CERT_PIN_API_DIENU_WORK
+        if (pin.isBlank()) return null
+        val fullPin = if (pin.startsWith("sha256/")) pin else "sha256/$pin"
+        return CertificatePinner.Builder()
+            .add("api.dienu.work", fullPin)
+            .build()
+    }
+
+    private val okHttpClient = okHttpClientBuilder.build()
 
     private val retrofit = Retrofit.Builder()
         .baseUrl(AppConstants.BASE_URL.ensureTrailingSlash())

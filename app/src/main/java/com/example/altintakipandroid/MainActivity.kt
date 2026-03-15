@@ -3,8 +3,10 @@ package com.example.altintakipandroid
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -12,6 +14,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import com.example.altintakipandroid.data.network.NetworkMonitor
+import com.example.altintakipandroid.data.security.SecurityChecker
+import com.example.altintakipandroid.ui.components.ConnectionStatusOverlay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.altintakipandroid.data.push.PUSH_EXTRA_CURRENCY_CODE
 import com.example.altintakipandroid.data.push.PUSH_EXTRA_DEEPLINK
@@ -26,6 +31,19 @@ import android.graphics.Color as AndroidColor
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Release'de root veya debugger tespit edilirse uygulamayı kapat (reverse eng. koruması)
+        if (!BuildConfig.DEBUG && SecurityChecker.isUnsafeEnvironment()) {
+            AlertDialog.Builder(this)
+                .setTitle("Güvenlik Uyarısı")
+                .setMessage(SecurityChecker.getUnsafeMessage())
+                .setCancelable(false)
+                .setPositiveButton("Tamam") { _, _ -> finish() }
+                .show()
+            return
+        }
+
+        NetworkMonitor.init(applicationContext)
         applyPushIntent(intent)
 
         setContent {
@@ -50,11 +68,15 @@ class MainActivity : ComponentActivity() {
             }
 
             AltintakipAndroidTheme(themeStyle = themeStyle) {
+                val isConnected by NetworkMonitor.isConnected.collectAsState(initial = true)
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    AppGate(viewModel = viewModel)
+                    Box(Modifier.fillMaxSize()) {
+                        AppGate(viewModel = viewModel)
+                        ConnectionStatusOverlay(isConnected = isConnected)
+                    }
                 }
             }
         }
@@ -68,6 +90,7 @@ class MainActivity : ComponentActivity() {
 
     private fun applyPushIntent(intent: Intent?) {
         val d = intent?.getStringExtra(PUSH_EXTRA_DEEPLINK)
+            ?: intent?.data?.toString()?.takeIf { it.startsWith("dienu://") }
         val c = intent?.getStringExtra(PUSH_EXTRA_CURRENCY_CODE)
         if (!d.isNullOrBlank() || !c.isNullOrBlank()) {
             PushDeepLinkHolder.set(d, c)

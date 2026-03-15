@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.altintakipandroid.data.api.RetrofitClient
 import com.example.altintakipandroid.data.local.PreferencesManager
+import com.example.altintakipandroid.data.security.Secrets
 import com.example.altintakipandroid.domain.AppInformationData
 import com.example.altintakipandroid.domain.UIConfig
 import com.example.altintakipandroid.domain.PushRegisterRequest
@@ -55,18 +56,34 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun checkInitialActivation() {
         runCatching {
-            val apiKey = prefs.getApiKey()
+            // On fresh install, show onboarding first. Only use saved/default API key after onboarding is done.
+            val onboardingDone = prefs.isOnboardingDone()
+            if (!onboardingDone) {
+                _state.value = _state.value.copy(
+                    isChecking = false,
+                    isInitialLoading = false,
+                    showOnboarding = true
+                )
+                return
+            }
+            var apiKey = prefs.getApiKey()
+            if (apiKey.isNullOrBlank()) {
+                apiKey = Secrets.defaultApiKey
+                if (apiKey.isBlank()) apiKey = BuildConfig.DEFAULT_API_KEY
+                if (apiKey.isNotBlank()) {
+                    prefs.saveApiKey(apiKey)
+                }
+            }
             Log.d(TAG, "AppGateVM checkInitialActivation: hasApiKey=${!apiKey.isNullOrBlank()}")
             if (apiKey != null && apiKey.isNotBlank()) {
                 _state.value = _state.value.copy(isActivated = true, isChecking = false)
                 loadInitialData(apiKey)
                 return
             }
-            val onboardingDone = prefs.isOnboardingDone()
             _state.value = _state.value.copy(
                 isChecking = false,
                 isInitialLoading = false,
-                showOnboarding = !onboardingDone
+                showOnboarding = false
             )
         }.onFailure {
             _state.value = _state.value.copy(
@@ -163,11 +180,11 @@ class AppGateViewModel(application: Application) : AndroidViewModel(application)
         activateWithClientName(clientName)
     }
 
-    /** Skip: use default API key from secret (iOS skipActivation). Key from secret.properties → BuildConfig.DEFAULT_API_KEY. */
+    /** Skip: use default API key (Secrets obfuscated veya BuildConfig / secret.properties). */
     fun skip() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
-            val defaultKey = BuildConfig.DEFAULT_API_KEY
+            val defaultKey = Secrets.defaultApiKey.ifBlank { BuildConfig.DEFAULT_API_KEY }
             if (defaultKey.isNotBlank()) {
                 runCatching {
                     prefs.saveApiKey(defaultKey)
